@@ -40,7 +40,10 @@ builder.Services.AddTransient<ISuperAdminTenantService, SuperAdminTenantService>
 builder.Services.AddTransient<IAppointmentService, AppointmentService>();
 builder.Services.AddTransient<IRolePermissionService, RolePermissionService>();
 builder.Services.AddDbContext<AppDbContext>(
-    options => options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")),
+    options => options
+        .UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
+        .ConfigureWarnings(warnings =>
+            warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)),
     contextLifetime: ServiceLifetime.Transient,
     optionsLifetime: ServiceLifetime.Singleton);
 
