@@ -1,5 +1,5 @@
 # ===== BUILD STAGE =====
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
 # Copiar csproj primero para aprovechar caché
@@ -19,9 +19,10 @@ WORKDIR /src/LegalSaaS.Web
 RUN dotnet publish "LegalSaaS.Web.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 # ===== RUNTIME STAGE =====
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 WORKDIR /app
 
+# Render usa el puerto 8080 por defecto
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
 
