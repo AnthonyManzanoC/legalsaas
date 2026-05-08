@@ -966,9 +966,13 @@ namespace LegalSaaS.Infrastructure.Services
         public async Task<List<Appointment>> GetByRangeAsync(DateTime from, DateTime to)
         {
             await _tenant.EnsureTenantResolvedAsync();
+
+            var fromUtc = DateTime.SpecifyKind(from, DateTimeKind.Utc);
+            var toUtc = DateTime.SpecifyKind(to, DateTimeKind.Utc);
+
             return await _db.Appointments
                 .Include(x => x.LawyerProfile)
-                .Where(x => x.StartAt >= from && x.StartAt <= to)
+                .Where(x => x.StartAt >= fromUtc && x.StartAt <= toUtc)
                 .OrderBy(x => x.StartAt)
                 .ToListAsync();
         }
