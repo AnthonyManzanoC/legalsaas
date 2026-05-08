@@ -4,12 +4,14 @@ using LegalSaaS.Domain.Entities;
 using LegalSaaS.Infrastructure.Data;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 
 namespace LegalSaaS.Web.Services
 {
     public class HttpTenantContext : ITenantContext
     {
+        private const string StudyQueryParameter = "estudio";
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly NavigationManager _navigationManager;
         private readonly IServiceProvider _serviceProvider;
@@ -121,9 +123,17 @@ namespace LegalSaaS.Web.Services
                     return;
                 }
 
+                if (userTenantId is > 0)
+                {
+                    await ResolveTenantByIdAsync(userTenantId.Value);
+                    return;
+                }
+
                 if (httpContext is not null && !IsBlazorCircuitContext(httpContext))
                 {
-                    await ResolveTenantByHostAsync(httpContext.Request.Host.Host, userTenantId);
+                    await ResolveTenantByRequestAsync(
+                        ResolveStudySubdomain(httpContext.Request.Query),
+                        httpContext.Request.Host.Host);
                     return;
                 }
 
@@ -137,17 +147,13 @@ namespace LegalSaaS.Web.Services
                         return;
                     }
 
-                    await ResolveTenantByHostAsync(uri.Host, userTenantId);
+                    await ResolveTenantByRequestAsync(
+                        ResolveStudySubdomain(uri.Query),
+                        uri.Host);
                     return;
                 }
 
-                if (userTenantId is > 0)
-                {
-                    await ResolveTenantByIdAsync(userTenantId.Value);
-                    return;
-                }
-
-                await ResolveTenantByHostAsync(null, null);
+                await ResolveTenantByRequestAsync(null, null);
             }
             catch
             {
@@ -159,9 +165,9 @@ namespace LegalSaaS.Web.Services
             }
         }
 
-        private async Task ResolveTenantByHostAsync(string? rawHost, int? fallbackTenantId)
+        private async Task ResolveTenantByRequestAsync(string? querySubdomain, string? rawHost)
         {
-            var subdomain = ResolveSubdomain(rawHost);
+            var subdomain = querySubdomain ?? ResolveSubdomain(rawHost);
 
             await using var scope = _serviceProvider.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -172,13 +178,6 @@ namespace LegalSaaS.Web.Services
                 tenant = await db.Tenants
                     .AsNoTracking()
                     .FirstOrDefaultAsync(x => x.Subdomain == subdomain);
-            }
-
-            if (tenant is null && fallbackTenantId is > 0)
-            {
-                tenant = await db.Tenants
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(x => x.Id == fallbackTenantId.Value);
             }
 
             if (tenant is null && string.IsNullOrWhiteSpace(subdomain))
@@ -266,9 +265,43 @@ namespace LegalSaaS.Web.Services
                    string.Equals(context.Request.Headers["Upgrade"].ToString(), "websocket", StringComparison.OrdinalIgnoreCase);
         }
 
+        private static string? ResolveStudySubdomain(IQueryCollection query)
+        {
+            if (!query.TryGetValue(StudyQueryParameter, out var values))
+                return null;
+
+            foreach (var value in values)
+            {
+                var subdomain = NormalizeLookupValue(value);
+                if (!string.IsNullOrWhiteSpace(subdomain))
+                    return subdomain;
+            }
+
+            return null;
+        }
+
+        private static string? ResolveStudySubdomain(string? queryString)
+        {
+            if (string.IsNullOrWhiteSpace(queryString))
+                return null;
+
+            var query = QueryHelpers.ParseQuery(queryString);
+            if (!query.TryGetValue(StudyQueryParameter, out var values))
+                return null;
+
+            foreach (var value in values)
+            {
+                var subdomain = NormalizeLookupValue(value);
+                if (!string.IsNullOrWhiteSpace(subdomain))
+                    return subdomain;
+            }
+
+            return null;
+        }
+
         private static string? ResolveSubdomain(string? rawHost)
         {
-            var host = rawHost?.Trim().ToLowerInvariant();
+            var host = NormalizeHost(rawHost);
             if (string.IsNullOrWhiteSpace(host))
                 return null;
 
@@ -287,6 +320,29 @@ namespace LegalSaaS.Web.Services
             }
 
             return null;
+        }
+
+        private static string? NormalizeHost(string? rawHost)
+        {
+            var host = NormalizeLookupValue(rawHost);
+            if (string.IsNullOrWhiteSpace(host))
+                return null;
+
+            if (host.StartsWith("[", StringComparison.Ordinal) && host.Contains(']'))
+            {
+                var end = host.IndexOf(']');
+                return end > 1 ? host[1..end] : null;
+            }
+
+            return host.Count(x => x == ':') == 1
+                ? host.Split(':', 2)[0]
+                : host;
+        }
+
+        private static string? NormalizeLookupValue(string? value)
+        {
+            var normalized = value?.Trim().ToLowerInvariant();
+            return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
         }
 
         private static string? ResolveBlockReason(Tenant tenant)

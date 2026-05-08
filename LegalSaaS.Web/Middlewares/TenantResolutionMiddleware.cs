@@ -11,6 +11,7 @@ namespace LegalSaaS.Web.Middlewares
 {
     public class TenantResolutionMiddleware
     {
+        private const string StudyQueryParameter = "estudio";
         private readonly RequestDelegate _next;
 
         public TenantResolutionMiddleware(RequestDelegate next)
@@ -31,27 +32,41 @@ namespace LegalSaaS.Web.Middlewares
             }
 
             var userTenantId = ResolveAuthenticatedTenantId(context);
-            var subdomain = ResolveSubdomain(context.Request.Host.Host);
             Tenant? tenant;
 
             if (userTenantId > 0)
             {
-                tenant = await db.Tenants.FirstOrDefaultAsync(x => x.Id == userTenantId);
-            }
-            else if (!string.IsNullOrWhiteSpace(subdomain))
-            {
-                tenant = await db.Tenants.FirstOrDefaultAsync(x => x.Subdomain == subdomain);
+                tenant = await db.Tenants
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.Id == userTenantId);
             }
             else
             {
-                tenant = await db.Tenants.FirstOrDefaultAsync(x => x.Id == 1);
+                var querySubdomain = ResolveStudySubdomain(context);
+                var hostSubdomain = querySubdomain is null
+                    ? ResolveSubdomain(context.Request.Host.Host)
+                    : null;
+                var subdomain = querySubdomain ?? hostSubdomain;
+
+                if (!string.IsNullOrWhiteSpace(subdomain))
+                {
+                    tenant = await db.Tenants
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(x => x.Subdomain == subdomain);
+                }
+                else
+                {
+                    tenant = await db.Tenants
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(x => x.Id == 1);
+                }
             }
 
             if (tenant is null)
             {
                 tenantContext.SetTenant(
                     0,
-                    !string.IsNullOrWhiteSpace(subdomain) ? subdomain : "LegalSaaS",
+                    ResolveFallbackTenantName(context),
                     isTenantActive: false,
                     tenantBlockReason: "Tenant no encontrado.");
 
@@ -78,9 +93,34 @@ namespace LegalSaaS.Web.Middlewares
             return int.TryParse(value, out var tenantId) ? tenantId : 0;
         }
 
-        private static string? ResolveSubdomain(string rawHost)
+        private static string? ResolveStudySubdomain(HttpContext context)
         {
-            var host = rawHost.Trim().ToLowerInvariant();
+            if (!context.Request.Query.TryGetValue(StudyQueryParameter, out var values))
+                return null;
+
+            foreach (var value in values)
+            {
+                var subdomain = NormalizeLookupValue(value);
+                if (!string.IsNullOrWhiteSpace(subdomain))
+                    return subdomain;
+            }
+
+            return null;
+        }
+
+        private static string ResolveFallbackTenantName(HttpContext context)
+        {
+            return ResolveStudySubdomain(context) ??
+                   ResolveSubdomain(context.Request.Host.Host) ??
+                   "LegalSaaS";
+        }
+
+        private static string? ResolveSubdomain(string? rawHost)
+        {
+            var host = NormalizeHost(rawHost);
+            if (string.IsNullOrWhiteSpace(host))
+                return null;
+
             if (IPAddress.TryParse(host, out _))
                 return null;
 
@@ -96,6 +136,29 @@ namespace LegalSaaS.Web.Middlewares
             }
 
             return null;
+        }
+
+        private static string? NormalizeHost(string? rawHost)
+        {
+            var host = NormalizeLookupValue(rawHost);
+            if (string.IsNullOrWhiteSpace(host))
+                return null;
+
+            if (host.StartsWith("[", StringComparison.Ordinal) && host.Contains(']'))
+            {
+                var end = host.IndexOf(']');
+                return end > 1 ? host[1..end] : null;
+            }
+
+            return host.Count(x => x == ':') == 1
+                ? host.Split(':', 2)[0]
+                : host;
+        }
+
+        private static string? NormalizeLookupValue(string? value)
+        {
+            var normalized = value?.Trim().ToLowerInvariant();
+            return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
         }
 
         private static string? ResolveBlockReason(Tenant tenant)
