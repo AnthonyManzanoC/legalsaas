@@ -1,0 +1,83 @@
+/* _content/LegalSaaS.Web/Components/Layout/MainLayout.razor.rz.scp.css */
+#blazor-error-ui[b-eybudcvanx] {
+    background: #fff3cd;
+    bottom: 0;
+    box-shadow: 0 -8px 30px rgba(10, 20, 40, 0.15);
+    display: none;
+    left: 0;
+    padding: 0.85rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+#blazor-error-ui .dismiss[b-eybudcvanx] {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
+}
+/* _content/LegalSaaS.Web/Components/Layout/NavMenu.razor.rz.scp.css */
+.admin-nav[b-nrcfwj2pun] {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+    gap: 0.28rem;
+    overflow-y: auto;
+    padding: 1rem 0.85rem 1rem;
+    scrollbar-color: rgba(86, 184, 255, 0.28) transparent;
+}
+
+.nav-section[b-nrcfwj2pun] {
+    color: rgba(220, 232, 247, 0.5);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    margin: 1rem 0.45rem 0.4rem;
+    text-transform: uppercase;
+}
+
+.admin-nav-link[b-nrcfwj2pun] {
+    align-items: center;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    color: rgba(238, 244, 248, 0.72);
+    display: flex;
+    gap: 0.7rem;
+    min-height: 2.75rem;
+    padding: 0.62rem 0.65rem;
+    text-decoration: none;
+    transition: background 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+}
+
+.admin-nav-link:hover[b-nrcfwj2pun],
+.admin-nav-link.active[b-nrcfwj2pun] {
+    background: rgba(86, 184, 255, 0.1);
+    border-color: rgba(86, 184, 255, 0.24);
+    box-shadow: inset 0 0 0 1px rgba(231, 197, 126, 0.06);
+    color: #fff;
+    transform: translateX(2px);
+}
+
+.nav-icon[b-nrcfwj2pun] {
+    align-items: center;
+    background: rgba(5, 11, 20, 0.8);
+    border: 1px solid rgba(86, 184, 255, 0.18);
+    border-radius: 8px;
+    color: #8ec5ff;
+    display: inline-flex;
+    flex: 0 0 2.1rem;
+    font-size: 0.7rem;
+    font-weight: 800;
+    height: 2rem;
+    justify-content: center;
+}
+
+.nav-spacer[b-nrcfwj2pun] {
+    flex: 1;
+}
+
+.public-return[b-nrcfwj2pun] {
+    margin-top: 1rem;
+}

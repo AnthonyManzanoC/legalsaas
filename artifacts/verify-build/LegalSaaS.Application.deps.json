@@ -1,0 +1,53 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v9.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v9.0": {
+      "LegalSaaS.Application/1.0.0": {
+        "dependencies": {
+          "LegalSaaS.Domain": "1.0.0",
+          "LegalSaaS.Shared": "1.0.0"
+        },
+        "runtime": {
+          "LegalSaaS.Application.dll": {}
+        }
+      },
+      "LegalSaaS.Domain/1.0.0": {
+        "runtime": {
+          "LegalSaaS.Domain.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "LegalSaaS.Shared/1.0.0": {
+        "runtime": {
+          "LegalSaaS.Shared.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "LegalSaaS.Application/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "LegalSaaS.Domain/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "LegalSaaS.Shared/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

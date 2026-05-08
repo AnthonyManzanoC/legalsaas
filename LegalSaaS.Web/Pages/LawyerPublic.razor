@@ -1,0 +1,124 @@
+@page "/abogada/{Slug}"
+@using LegalSaaS.Application.Interfaces
+@using LegalSaaS.Domain.Entities
+@inject ILawyerProfileService LawyerService
+@inject ILawFirmSettingsService FirmService
+
+@if (profile is null)
+{
+    <section class="section-band">
+        <div class="panel light">No encontramos este perfil profesional en el tenant actual.</div>
+    </section>
+}
+else
+{
+    <article class="lawyer-public-page">
+        <section class="lawyer-editorial-hero">
+            <div class="lawyer-editorial-copy">
+                <span class="eyebrow">Perfil editorial</span>
+                <h1>@profile.FullName</h1>
+                <p>@(profile.Title ?? firm?.BannerSubtitle ?? "Direccion juridica del estudio")</p>
+                <div class="lawyer-editorial-meta">
+                    <span>@(profile.ExperienceYears ?? "Trayectoria")</span>
+                    <span>@(profile.RegistrationNumber ?? firm?.Name ?? "Estudio juridico")</span>
+                </div>
+                <a class="btn-premium" href="/cita">Agendar Cita</a>
+            </div>
+
+            <div class="lawyer-editorial-photo">
+                @if (!string.IsNullOrWhiteSpace(profile.PhotoUrl))
+                {
+                    <img src="@profile.PhotoUrl" alt="@profile.FullName" />
+                }
+                else
+                {
+                    <div class="lawyer-placeholder">@Initials</div>
+                }
+            </div>
+        </section>
+
+        <section class="lawyer-editorial-body">
+            <div class="magazine-kicker">Legal profile</div>
+            <h2>@(firm?.EditorialBioTitle ?? "Una practica juridica con criterio, calma y estrategia")</h2>
+            <p class="lead">@Biography</p>
+
+            <div class="editorial-columns">
+                <section>
+                    <h3>Biografia</h3>
+                    <p>@Biography</p>
+                </section>
+                <section>
+                    <h3>Trayectoria academica</h3>
+                    <p>@(profile.AcademicBackground ?? "Actualiza la trayectoria academica desde el panel de administracion para fortalecer esta pagina editorial.")</p>
+                </section>
+            </div>
+
+            <div class="lawyer-contact-strip">
+                <div>
+                    <span class="eyebrow">Contacto directo</span>
+                    <strong>@(firm?.Name ?? profile.FullName)</strong>
+                </div>
+                <div class="hero-actions">
+                    <a class="btn-premium compact" href="/cita">Agendar Cita</a>
+                    @if (!string.IsNullOrWhiteSpace(profile.WhatsApp))
+                    {
+                        <a class="btn-ghost" href="@WhatsAppLink" target="_blank" rel="noopener">WhatsApp</a>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(profile.Email))
+                    {
+                        <a class="btn-ghost" href="mailto:@profile.Email">Email</a>
+                    }
+                </div>
+            </div>
+        </section>
+    </article>
+}
+
+@code {
+    [Parameter] public string Slug { get; set; } = string.Empty;
+
+    private LawyerProfile? profile;
+    private LawFirmSettings? firm;
+
+    private string Biography =>
+        !string.IsNullOrWhiteSpace(firm?.EditorialBioText)
+            ? firm.EditorialBioText!
+            : profile?.Biography ?? "Este perfil se alimenta automaticamente de la informacion administrada por el estudio.";
+
+    private string Initials
+    {
+        get
+        {
+            var source = profile?.FullName ?? firm?.Name ?? "LS";
+            var parts = source.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            return string.Concat(parts.Take(2).Select(x => x[0])).ToUpperInvariant();
+        }
+    }
+
+    private string WhatsAppLink =>
+        $"https://wa.me/{new string((profile?.WhatsApp ?? firm?.WhatsApp ?? string.Empty).Where(char.IsDigit).ToArray())}";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        firm = await FirmService.GetCurrentAsync();
+        profile = await LawyerService.GetBySlugAsync(Slug);
+
+        if (profile is null)
+        {
+            var allProfiles = await LawyerService.GetAllAsync();
+            profile = allProfiles.FirstOrDefault(x => Slugify(x.PublicSlug ?? x.FullName) == Slug)
+                ?? allProfiles.FirstOrDefault();
+        }
+    }
+
+    private static string Slugify(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+
+        var normalized = text.ToLowerInvariant().Trim();
+        normalized = System.Text.RegularExpressions.Regex.Replace(normalized, @"[^a-z0-9\s-]", "");
+        normalized = System.Text.RegularExpressions.Regex.Replace(normalized, @"\s+", "-");
+        normalized = System.Text.RegularExpressions.Regex.Replace(normalized, "-+", "-");
+        return normalized.Trim('-');
+    }
+}

@@ -1,0 +1,172 @@
+@page "/admin/estudio"
+@using LegalSaaS.Application.Interfaces
+@using LegalSaaS.Domain.Entities
+@using LegalSaaS.Web.Components.Layout
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@layout AdminLayout
+@attribute [Authorize(Roles = "Admin,SuperAdmin")]
+@inject ILawFirmSettingsService Service
+
+<div class="page-header">
+    <div>
+        <span class="eyebrow">Marca del tenant</span>
+        <h1>Estudio juridico</h1>
+        <p>Estos datos alimentan la experiencia publica, contacto, marca y conversion.</p>
+    </div>
+    <a class="btn-ghost" href="/">Ver sitio publico</a>
+</div>
+
+@if (model is null)
+{
+    <div class="panel">Cargando configuracion...</div>
+}
+else
+{
+    <div class="panel">
+        <EditForm Model="model" OnValidSubmit="Save">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            @if (!string.IsNullOrWhiteSpace(statusMessage))
+            {
+                <div class="notice success">@statusMessage</div>
+            }
+
+            <div class="admin-form-grid">
+                <label>
+                    <span>Nombre comercial</span>
+                    <InputText @bind-Value="model.Name" />
+                </label>
+                <label>
+                    <span>Nombre legal</span>
+                    <InputText @bind-Value="model.LegalName" />
+                </label>
+                <label>
+                    <span>Subir logo</span>
+                    <LegalSaaS.Web.Components.Shared.ImageUploader Folder="logos" OnUploaded="UploadLogo" />
+                </label>
+                <label class="wide">
+                    <span>Logo URL</span>
+                    <InputText @bind-Value="model.LogoUrl" />
+                </label>
+                @if (!string.IsNullOrWhiteSpace(model.LogoUrl))
+                {
+                    <div class="wide settings-logo-preview">
+                        <img src="@model.LogoUrl" alt="Logo del estudio" />
+                        <span>Logo publico activo</span>
+                    </div>
+                }
+                <label class="color-setting">
+                    <span>Color Principal (Botones)</span>
+                    <input type="color" @bind="model.PrimaryColor" />
+                </label>
+                <label class="color-setting">
+                    <span>Color del Menu</span>
+                    <input type="color" @bind="model.HeaderBackgroundColor" />
+                </label>
+                <label class="wide">
+                    <span>Titulo hero publico</span>
+                    <InputText @bind-Value="model.HeroTitle" />
+                </label>
+                <label class="wide">
+                    <span>Subtitulo hero publico</span>
+                    <InputText @bind-Value="model.HeroSubtitle" />
+                </label>
+                <label class="wide">
+                    <span>Subtitulo de tarjeta profesional</span>
+                    <InputText @bind-Value="model.BannerSubtitle" />
+                </label>
+                <label class="wide">
+                    <span>Descripcion comercial</span>
+                    <InputTextArea @bind-Value="model.Description" />
+                </label>
+                <label class="wide">
+                    <span>Titulo editorial de biografia</span>
+                    <InputText @bind-Value="model.EditorialBioTitle" />
+                </label>
+                <label class="wide">
+                    <span>Texto editorial de biografia</span>
+                    <InputTextArea rows="8" @bind-Value="model.EditorialBioText" />
+                </label>
+                <label>
+                    <span>Ciudad</span>
+                    <InputText @bind-Value="model.City" />
+                </label>
+                <label>
+                    <span>Telefono</span>
+                    <InputText @bind-Value="model.Phone" />
+                </label>
+                <label>
+                    <span>WhatsApp</span>
+                    <InputText @bind-Value="model.WhatsApp" />
+                </label>
+                <label>
+                    <span>Email</span>
+                    <InputText @bind-Value="model.Email" />
+                </label>
+                <label class="wide">
+                    <span>Direccion</span>
+                    <InputText @bind-Value="model.Address" />
+                </label>
+                <label class="wide">
+                    <span>Embed o URL de Google Maps</span>
+                    <InputTextArea rows="4" @bind-Value="model.MapEmbedUrl" />
+                </label>
+                <label>
+                    <span>Facebook</span>
+                    <InputText @bind-Value="model.FacebookUrl" />
+                </label>
+                <label>
+                    <span>Instagram</span>
+                    <InputText @bind-Value="model.InstagramUrl" />
+                </label>
+                <label>
+                    <span>LinkedIn</span>
+                    <InputText @bind-Value="model.LinkedinUrl" />
+                </label>
+            </div>
+
+            <button class="btn-premium mt-3" type="submit">Guardar estudio</button>
+        </EditForm>
+    </div>
+}
+
+@code {
+    private LawFirmSettings? model;
+    private string? statusMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        model = await Service.GetCurrentAsync() ?? new LawFirmSettings();
+        model.PrimaryColor = NormalizeColor(model.PrimaryColor, "#0B192C");
+        model.HeaderBackgroundColor = NormalizeColor(model.HeaderBackgroundColor, "#FFFFFF");
+    }
+
+    private async Task Save()
+    {
+        if (model is not null)
+        {
+            await Service.SaveAsync(model);
+            statusMessage = "Configuracion guardada correctamente.";
+        }
+    }
+
+    private void UploadLogo(string url)
+    {
+        if (model is not null)
+            model.LogoUrl = url;
+    }
+
+    private static string NormalizeColor(string? value, string fallback)
+    {
+        var color = value?.Trim();
+        if (string.IsNullOrWhiteSpace(color))
+            return fallback;
+
+        if (color.Length != 7 || color[0] != '#')
+            return fallback;
+
+        return color.Skip(1).All(Uri.IsHexDigit) ? color : fallback;
+    }
+}

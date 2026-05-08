@@ -1,0 +1,92 @@
+@page "/admin/dashboard"
+@layout LegalSaaS.Web.Components.Layout.AdminLayout
+@attribute [Authorize(Roles = "Admin,Editor,Lawyer,Assistant,SuperAdmin")]
+@using Microsoft.AspNetCore.Authorization
+@using LegalSaaS.Application.Interfaces
+@using LegalSaaS.Domain.Entities
+@inject IDashboardMetricsService MetricsService
+@inject IAppointmentService AppointmentService
+
+<LegalSaaS.Web.Components.Shared.SeoHead PageKey="dashboard" />
+
+<div class="page-header">
+    <div>
+        <span class="eyebrow">Panel de control</span>
+        <h1>Vista ejecutiva del estudio</h1>
+        <p>Operacion, contenido, mensajes y agenda en una sola cabina.</p>
+    </div>
+    <a class="btn-premium compact" href="/admin/citas">Nueva cita</a>
+</div>
+
+@if (metrics is null)
+{
+    <div class="panel">Calculando metricas...</div>
+}
+else
+{
+    <section class="command-center-hero">
+        <div>
+            <span class="eyebrow">Live operating view</span>
+            <h2>Command Center del estudio</h2>
+            <p>Convierte presencia publica, agenda y mensajes en una operacion legal mas visible y accionable.</p>
+        </div>
+        <div class="command-pulse">
+            <span>Estado</span>
+            <strong>Operativo</strong>
+        </div>
+    </section>
+
+    <div class="dashboard-grid">
+        <div class="metric-card elite">
+            <span>Servicios activos</span>
+            <h2>@metrics.ServicesCount</h2>
+            <small>Oferta visible para conversion.</small>
+        </div>
+        <div class="metric-card elite">
+            <span>Articulos publicados</span>
+            <h2>@metrics.PublishedPostsCount</h2>
+            <small>Autoridad editorial activa.</small>
+        </div>
+        <div class="metric-card elite urgent">
+            <span>Mensajes sin leer</span>
+            <h2>@metrics.UnreadMessagesCount</h2>
+            <small>Prioridad comercial del dia.</small>
+        </div>
+        <div class="metric-card elite">
+            <span>Citas proximas</span>
+            <h2>@upcomingAppointments</h2>
+            <small>Agenda de los proximos 14 dias.</small>
+        </div>
+    </div>
+
+    <div class="command-actions-grid">
+        <a class="command-action" href="/admin/estudio">
+            <span>Marca</span>
+            <strong>Editar estudio</strong>
+        </a>
+        <a class="command-action" href="/admin/abogada">
+            <span>Autoridad</span>
+            <strong>Perfil editorial</strong>
+        </a>
+        <a class="command-action" href="/admin/testimonios">
+            <span>Confianza</span>
+            <strong>Aprobar testimonios</strong>
+        </a>
+        <a class="command-action" href="/admin/contactos">
+            <span>Prospectos</span>
+            <strong>Revisar mensajes</strong>
+        </a>
+    </div>
+}
+
+@code {
+    private DashboardMetricsDto? metrics;
+    private int upcomingAppointments;
+
+    protected override async Task OnInitializedAsync()
+    {
+        metrics = await MetricsService.GetAsync();
+        upcomingAppointments = (await AppointmentService.GetByRangeAsync(DateTime.Today, DateTime.Today.AddDays(14)))
+            .Count(x => x.Status is AppointmentStatus.Requested or AppointmentStatus.Confirmed or AppointmentStatus.Rescheduled);
+    }
+}

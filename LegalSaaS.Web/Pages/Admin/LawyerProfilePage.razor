@@ -1,0 +1,117 @@
+@page "/admin/abogada"
+@using LegalSaaS.Application.Interfaces
+@using LegalSaaS.Domain.Entities
+@using LegalSaaS.Web.Components.Layout
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@layout AdminLayout
+@attribute [Authorize(Roles = "Admin,Lawyer,SuperAdmin")]
+@inject ILawyerProfileService Service
+
+<div class="page-header">
+    <div>
+        <span class="eyebrow">Vitrina profesional</span>
+        <h1>Perfil del abogado</h1>
+        <p>Presenta autoridad, trayectoria y contacto directo para convertir visitantes en clientes.</p>
+    </div>
+</div>
+
+@if (model is null)
+{
+    <div class="panel">Cargando perfil...</div>
+}
+else
+{
+    <div class="panel">
+        <EditForm Model="model" OnValidSubmit="Save">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            @if (!string.IsNullOrWhiteSpace(statusMessage))
+            {
+                <div class="notice success">@statusMessage</div>
+            }
+
+            <div class="admin-form-grid">
+                <label>
+                    <span>Nombre completo</span>
+                    <InputText @bind-Value="model.FullName" />
+                </label>
+                <label>
+                    <span>Titulo profesional</span>
+                    <InputText @bind-Value="model.Title" />
+                </label>
+                <label>
+                    <span>Subir foto editorial</span>
+                    <LegalSaaS.Web.Components.Shared.ImageUploader Folder="lawyers" OnUploaded="UploadPhoto" />
+                </label>
+                <label class="wide">
+                    <span>Foto URL</span>
+                    <InputText @bind-Value="model.PhotoUrl" />
+                </label>
+                @if (!string.IsNullOrWhiteSpace(model.PhotoUrl))
+                {
+                    <div class="wide settings-logo-preview portrait">
+                        <img src="@model.PhotoUrl" alt="@model.FullName" />
+                        <span>Foto publica activa</span>
+                    </div>
+                }
+                <label>
+                    <span>Anos de experiencia</span>
+                    <InputText @bind-Value="model.ExperienceYears" />
+                </label>
+                <label>
+                    <span>Registro profesional</span>
+                    <InputText @bind-Value="model.RegistrationNumber" />
+                </label>
+                <label>
+                    <span>Slug publico</span>
+                    <InputText @bind-Value="model.PublicSlug" />
+                </label>
+                <label>
+                    <span>Email</span>
+                    <InputText @bind-Value="model.Email" />
+                </label>
+                <label>
+                    <span>WhatsApp</span>
+                    <InputText @bind-Value="model.WhatsApp" />
+                </label>
+                <label class="wide">
+                    <span>Biografia</span>
+                    <InputTextArea @bind-Value="model.Biography" />
+                </label>
+                <label class="wide">
+                    <span>Trayectoria academica</span>
+                    <InputTextArea @bind-Value="model.AcademicBackground" />
+                </label>
+            </div>
+
+            <button class="btn-premium mt-3" type="submit">Guardar perfil</button>
+        </EditForm>
+    </div>
+}
+
+@code {
+    private LawyerProfile? model;
+    private string? statusMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        model = await Service.GetCurrentAsync() ?? new LawyerProfile();
+    }
+
+    private async Task Save()
+    {
+        if (model is not null)
+        {
+            await Service.SaveAsync(model);
+            statusMessage = "Perfil guardado correctamente.";
+        }
+    }
+
+    private void UploadPhoto(string url)
+    {
+        if (model is not null)
+            model.PhotoUrl = url;
+    }
+}

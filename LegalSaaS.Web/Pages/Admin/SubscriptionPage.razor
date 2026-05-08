@@ -1,0 +1,59 @@
+@page "/admin/suscripcion"
+@layout LegalSaaS.Web.Components.Layout.AdminLayout
+@attribute [Authorize(Roles = "Admin,SuperAdmin")]
+@using LegalSaaS.Application.Interfaces
+@using LegalSaaS.Domain.Entities
+@using LegalSaaS.Infrastructure.Data
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext Db
+@inject ITenantContext Tenant
+
+<div class="page-header">
+    <div>
+        <span class="eyebrow">Monetizacion</span>
+        <h1>Suscripcion del estudio</h1>
+        <p>Plan anual manual: el Super Admin registra renovaciones cuando el pago se hace por fuera.</p>
+    </div>
+</div>
+
+@if (subscription is null)
+{
+    <div class="panel">Este tenant aun no tiene suscripcion activa registrada.</div>
+}
+else
+{
+    <div class="plans-grid">
+        <article class="plan-card">
+            <span class="badge-soft">@subscription.Status</span>
+            <h3>@subscription.SubscriptionPlan?.Name</h3>
+            <p>Precio anual base: $@subscription.PriceAtSubscription</p>
+            <p>Vigente hasta: @(subscription.EndAt?.ToString("yyyy-MM-dd") ?? subscription.NextBillingAt?.ToString("yyyy-MM-dd") ?? subscription.TrialEndsAt?.ToString("yyyy-MM-dd") ?? "No aplica")</p>
+        </article>
+        <article class="plan-card">
+            <span class="badge-soft">Capacidad</span>
+            <h3>@subscription.SubscriptionPlan?.MaxUsers usuarios</h3>
+            <p>@subscription.SubscriptionPlan?.MaxLawyers abogados incluidos en este plan.</p>
+        </article>
+        <article class="plan-card">
+            <span class="badge-soft">Siguiente cobro</span>
+            <h3>@(subscription.NextBillingAt?.ToString("yyyy-MM-dd") ?? "Pendiente")</h3>
+            <p>Proveedor: @(subscription.PaymentProvider ?? "Offline / Manual")</p>
+        </article>
+    </div>
+}
+
+@code {
+    private TenantSubscription? subscription;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Tenant.EnsureTenantResolvedAsync();
+
+        subscription = await Db.TenantSubscriptions
+            .Include(x => x.SubscriptionPlan)
+            .Where(x => x.TenantId == Tenant.TenantId)
+            .OrderByDescending(x => x.StartAt)
+            .FirstOrDefaultAsync();
+    }
+}

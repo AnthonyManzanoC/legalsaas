@@ -1,0 +1,85 @@
+@page "/admin/equipo"
+@layout LegalSaaS.Web.Components.Layout.AdminLayout
+@attribute [Authorize(Roles = "Admin,Editor,SuperAdmin")]
+@using LegalSaaS.Application.Interfaces
+@using LegalSaaS.Domain.Entities
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@inject ITeamMemberService TeamService
+
+<div class="page-header">
+    <div>
+        <span class="eyebrow">Equipo</span>
+        <h1>Talento del estudio</h1>
+        <p>Presenta perfiles de apoyo para que el sitio se sienta robusto y confiable.</p>
+    </div>
+</div>
+
+<div class="panel">
+    <EditForm Model="form" OnValidSubmit="Add">
+        <div class="admin-form-grid">
+            <label>
+                <span>Nombre</span>
+                <InputText @bind-Value="form.FullName" />
+            </label>
+            <label>
+                <span>Rol</span>
+                <InputText @bind-Value="form.Role" />
+            </label>
+            <label>
+                <span>Orden</span>
+                <InputNumber @bind-Value="form.SortOrder" />
+            </label>
+            <label>
+                <span>Foto URL</span>
+                <InputText @bind-Value="form.PhotoUrl" />
+            </label>
+            <label class="wide">
+                <span>Bio corta</span>
+                <InputTextArea @bind-Value="form.ShortBio" />
+            </label>
+        </div>
+        <button class="btn-premium mt-3" type="submit">Agregar miembro</button>
+    </EditForm>
+</div>
+
+<div class="panel table-shell">
+    <table class="data-table">
+        <thead>
+            <tr><th>Nombre</th><th>Rol</th><th>Orden</th><th></th></tr>
+        </thead>
+        <tbody>
+            @foreach (var item in items)
+            {
+                <tr>
+                    <td>@item.FullName</td>
+                    <td>@item.Role</td>
+                    <td>@item.SortOrder</td>
+                    <td><button class="btn btn-sm btn-danger" @onclick="() => Delete(item.Id)">Eliminar</button></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private TeamMember form = new();
+    private List<TeamMember> items = new();
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load() => items = await TeamService.GetAllAsync();
+
+    private async Task Add()
+    {
+        await TeamService.AddAsync(form);
+        form = new TeamMember();
+        await Load();
+    }
+
+    private async Task Delete(int id)
+    {
+        await TeamService.DeleteAsync(id);
+        await Load();
+    }
+}

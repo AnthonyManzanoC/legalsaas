@@ -1,0 +1,107 @@
+@page "/admin/servicios"
+@using LegalSaaS.Application.Interfaces
+@using LegalSaaS.Domain.Entities
+@using LegalSaaS.Web.Components.Layout
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@layout AdminLayout
+@attribute [Authorize(Roles = "Admin,Editor,Lawyer,SuperAdmin")]
+@inject IServiceItemService Service
+
+<div class="page-header">
+    <div>
+        <span class="eyebrow">Oferta comercial</span>
+        <h1>Servicios legales</h1>
+        <p>Define las areas que aparecen en el sitio publico y guian al cliente hacia una cita.</p>
+    </div>
+    <a class="btn-ghost" href="/servicios">Ver pagina</a>
+</div>
+
+<div class="panel">
+    <EditForm Model="newItem" OnValidSubmit="Add">
+        <div class="admin-form-grid">
+            <label>
+                <span>Titulo</span>
+                <InputText @bind-Value="newItem.Title" />
+            </label>
+            <label>
+                <span>Slug</span>
+                <InputText @bind-Value="newItem.Slug" />
+            </label>
+            <label>
+                <span>Orden</span>
+                <InputNumber @bind-Value="newItem.SortOrder" />
+            </label>
+            <label class="wide">
+                <span>Resumen</span>
+                <InputTextArea @bind-Value="newItem.Summary" />
+            </label>
+            <label class="check-row">
+                <InputCheckbox @bind-Value="newItem.ShowOnHome" />
+                <span>Destacar en home</span>
+            </label>
+        </div>
+        <button class="btn-premium mt-3" type="submit">Agregar servicio</button>
+    </EditForm>
+</div>
+
+@if (items is null)
+{
+    <div class="panel">Cargando servicios...</div>
+}
+else
+{
+    <div class="panel table-shell">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Titulo</th>
+                    <th>Resumen</th>
+                    <th>Orden</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var x in items)
+                {
+                    <tr>
+                        <td>@x.Title</td>
+                        <td>@x.Summary</td>
+                        <td>@x.SortOrder</td>
+                        <td>
+                            <button class="btn btn-sm btn-danger" @onclick="() => Delete(x.Id)">Eliminar</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private List<ServiceItem>? items;
+    private ServiceItem newItem = new() { ShowOnHome = true };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        items = await Service.GetAllAsync();
+    }
+
+    private async Task Add()
+    {
+        await Service.AddAsync(newItem);
+        newItem = new ServiceItem { ShowOnHome = true };
+        await Load();
+    }
+
+    private async Task Delete(int id)
+    {
+        await Service.DeleteAsync(id);
+        await Load();
+    }
+}

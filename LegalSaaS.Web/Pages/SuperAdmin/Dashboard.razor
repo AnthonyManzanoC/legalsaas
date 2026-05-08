@@ -1,0 +1,108 @@
+@page "/superadmin/dashboard"
+@layout LegalSaaS.Web.Components.Layout.AdminLayout
+@attribute [Authorize(Roles = "SuperAdmin")]
+@using LegalSaaS.Domain.Entities
+@using LegalSaaS.Infrastructure.Data
+@using LegalSaaS.Application.Interfaces
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext Db
+@inject ITenantContext Tenant
+
+<div class="page-header">
+    <div>
+        <span class="eyebrow">LegalSaaS Command Center</span>
+        <h1>Plataforma multi-tenant</h1>
+        <p>Vision global de estudios, usuarios, trials y suscripciones.</p>
+    </div>
+    <a class="btn-premium compact" href="/superadmin/tenants">Crear tenant</a>
+</div>
+
+@if (stats is null)
+{
+    <div class="panel">Cargando plataforma...</div>
+}
+else
+{
+    <section class="command-center-hero platform">
+        <div>
+            <span class="eyebrow">Platform telemetry</span>
+            <h2>Radar de crecimiento multi-tenant</h2>
+            <p>Una vista ejecutiva para monitorear estudios, trials, usuarios y suscripciones activas.</p>
+        </div>
+        <div class="command-pulse">
+            <span>Scope</span>
+            <strong>Global</strong>
+        </div>
+    </section>
+
+    <div class="dashboard-grid">
+        <div class="metric-card elite">
+            <span>Tenants</span>
+            <h2>@stats.Tenants</h2>
+            <small>Estudios registrados.</small>
+        </div>
+        <div class="metric-card elite">
+            <span>Suscripciones activas</span>
+            <h2>@stats.ActiveSubscriptions</h2>
+            <small>Ingreso recurrente vivo.</small>
+        </div>
+        <div class="metric-card elite">
+            <span>Trials</span>
+            <h2>@stats.Trials</h2>
+            <small>Oportunidades en evaluacion.</small>
+        </div>
+        <div class="metric-card elite">
+            <span>Usuarios</span>
+            <h2>@stats.Users</h2>
+            <small>Cuentas dentro del SaaS.</small>
+        </div>
+    </div>
+}
+
+<div class="panel table-shell mt-3">
+    <table class="data-table">
+        <thead>
+            <tr><th>Tenant</th><th>Subdominio</th><th>Activo</th><th>Trial</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var tenant in recentTenants)
+            {
+                <tr>
+                    <td>@tenant.Name</td>
+                    <td>@tenant.Subdomain</td>
+                    <td>@(tenant.IsActive ? "Si" : "No")</td>
+                    <td>@(tenant.TrialEndsAt?.ToString("yyyy-MM-dd") ?? "N/A")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private SuperAdminStats? stats;
+    private List<Tenant> recentTenants = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Tenant.EnsureTenantResolvedAsync();
+
+        stats = new SuperAdminStats
+        {
+            Tenants = await Db.Tenants.CountAsync(),
+            ActiveSubscriptions = await Db.TenantSubscriptions.IgnoreQueryFilters().CountAsync(x => x.Status == SubscriptionStatus.Active),
+            Trials = await Db.TenantSubscriptions.IgnoreQueryFilters().CountAsync(x => x.Status == SubscriptionStatus.Trialing),
+            Users = await Db.Users.CountAsync()
+        };
+
+        recentTenants = await Db.Tenants.OrderByDescending(x => x.CreatedAt).Take(8).ToListAsync();
+    }
+
+    private sealed class SuperAdminStats
+    {
+        public int Tenants { get; set; }
+        public int ActiveSubscriptions { get; set; }
+        public int Trials { get; set; }
+        public int Users { get; set; }
+    }
+}

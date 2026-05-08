@@ -1,0 +1,241 @@
+@inherits LayoutComponentBase
+@inject ITenantContext Tenant
+@inject ILawFirmSettingsService FirmService
+@inject IServiceItemService ServiceItemService
+@inject NavigationManager Navigation
+
+@if (!tenantReady)
+{
+    <div class="public-shell">
+        <main class="public-content">
+            <section class="section-band">
+                <div class="panel light">Validando sitio...</div>
+            </section>
+        </main>
+    </div>
+}
+else
+{
+<style>
+    :root {
+        --public-primary: @PublicPrimaryColor;
+        --public-header-bg: @PublicHeaderBackgroundColor;
+    }
+</style>
+
+@if (Tenant.IsTenantBlocked && !IsLoginPath)
+{
+    <div class="public-shell">
+        <main class="public-content">
+            <section class="tenant-unavailable">
+                <div>
+                    <span class="eyebrow">Sitio no disponible</span>
+                    <h1>Sitio web temporalmente fuera de servicio</h1>
+                    <p>Este dominio no esta disponible en este momento.</p>
+                </div>
+            </section>
+        </main>
+    </div>
+}
+else
+{
+<div class="public-shell">
+    <header class="public-nav">
+        <a class="public-brand" href="/">
+            @if (!string.IsNullOrWhiteSpace(firm?.LogoUrl))
+            {
+                <span class="brand-mark logo-mark">
+                    <img src="@firm.LogoUrl" alt="@BrandName logo" />
+                </span>
+            }
+            else
+            {
+                <span class="brand-mark">@BrandInitials</span>
+            }
+            <span>@BrandName</span>
+        </a>
+
+        @if (!Tenant.IsTenantBlocked)
+        {
+            <nav class="public-links">
+                <a href="/">Inicio</a>
+                <a href="/servicios">Servicios</a>
+                <a href="/editorial">Editorial</a>
+                <a href="/cita">Citas</a>
+                <a href="/contacto">Contacto</a>
+            </nav>
+        }
+
+        <div class="public-actions">
+            @if (!Tenant.IsTenantBlocked)
+            {
+            <AuthorizeView>
+                <Authorized>
+                    <a class="btn-ghost" href="@PanelHref">Panel</a>
+                    <form method="post" action="/account/logout">
+                        <button class="icon-button" title="Cerrar sesion" type="submit">×</button>
+                    </form>
+                </Authorized>
+                <NotAuthorized>
+                    <a class="btn-ghost" href="/login">Acceder</a>
+                </NotAuthorized>
+            </AuthorizeView>
+            <a class="btn-premium compact" href="/cita">Solicitar cita</a>
+            }
+        </div>
+    </header>
+
+    <main class="public-content">
+        @Body
+    </main>
+
+    <footer class="public-footer">
+        <div class="footer-inner">
+            <section class="footer-brand-block">
+                <div class="public-brand">
+                    @if (!string.IsNullOrWhiteSpace(firm?.LogoUrl))
+                    {
+                        <span class="brand-mark logo-mark">
+                            <img src="@firm.LogoUrl" alt="@BrandName logo" />
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="brand-mark">@BrandInitials</span>
+                    }
+                    <span>@BrandName</span>
+                </div>
+                <p>@(firm?.Description ?? "Plataforma legal multi-estudio con experiencia publica premium y operacion administrable.")</p>
+            </section>
+
+            <section>
+                <h3>Servicios</h3>
+                <div class="footer-link-list">
+                    @foreach (var item in FooterServices)
+                    {
+                        <a href="/servicios">@item.Title</a>
+                    }
+                    <a href="/cita">Agendar consulta</a>
+                </div>
+            </section>
+
+            <section>
+                <h3>Contacto</h3>
+                <div class="footer-link-list">
+                    @if (!string.IsNullOrWhiteSpace(firm?.Phone))
+                    {
+                        <a href="tel:@firm.Phone">@firm.Phone</a>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(firm?.WhatsApp))
+                    {
+                        <a href="@WhatsAppLink" target="_blank" rel="noopener">WhatsApp</a>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(firm?.Email))
+                    {
+                        <a href="mailto:@firm.Email">@firm.Email</a>
+                    }
+                    <span>@FooterLocation</span>
+                </div>
+            </section>
+
+            <section>
+                <h3>Redes</h3>
+                <div class="footer-socials">
+                    @if (!string.IsNullOrWhiteSpace(firm?.FacebookUrl))
+                    {
+                        <a href="@firm.FacebookUrl" target="_blank" rel="noopener">Fb</a>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(firm?.InstagramUrl))
+                    {
+                        <a href="@firm.InstagramUrl" target="_blank" rel="noopener">Ig</a>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(firm?.LinkedinUrl))
+                    {
+                        <a href="@firm.LinkedinUrl" target="_blank" rel="noopener">In</a>
+                    }
+                </div>
+                <p class="footer-system">Powered by LegalSaaS</p>
+            </section>
+        </div>
+
+        <div class="footer-bottom">
+            <span>Copyright @DateTime.Now.Year @BrandName. Todos los derechos reservados.</span>
+            <span>SaaS legal multi-tenant para estudios juridicos.</span>
+        </div>
+    </footer>
+</div>
+}
+}
+
+@code {
+    private LawFirmSettings? firm;
+    private List<ServiceItem> services = new();
+    private bool tenantReady;
+    private bool IsLoginPath => Navigation.ToBaseRelativePath(Navigation.Uri).StartsWith("login", StringComparison.OrdinalIgnoreCase);
+
+    private string BrandName =>
+        !string.IsNullOrWhiteSpace(firm?.Name)
+            ? firm.Name
+            : Tenant.TenantName ?? "LegalSaaS";
+
+    private string FooterLocation =>
+        string.Join(", ", new[] { firm?.Address, firm?.City }.Where(x => !string.IsNullOrWhiteSpace(x))) is { Length: > 0 } location
+            ? location
+            : "Atencion personalizada";
+
+    private string WhatsAppLink =>
+        $"https://wa.me/{new string((firm?.WhatsApp ?? string.Empty).Where(char.IsDigit).ToArray())}";
+
+    private string PanelHref => Tenant.IsSuperAdmin ? "/superadmin/dashboard" : "/admin/dashboard";
+
+    private string PublicPrimaryColor => NormalizeColor(firm?.PrimaryColor, "#0B192C");
+
+    private string PublicHeaderBackgroundColor => NormalizeColor(firm?.HeaderBackgroundColor, "#FFFFFF");
+
+    private IEnumerable<ServiceItem> FooterServices =>
+        services.Count > 0
+            ? services.Take(4)
+            : new[]
+            {
+                new ServiceItem { Title = "Consulta estrategica" },
+                new ServiceItem { Title = "Derecho de familia" },
+                new ServiceItem { Title = "Derecho civil" }
+            };
+
+    private string BrandInitials
+    {
+        get
+        {
+            var source = BrandName;
+            var parts = source.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            return string.Concat(parts.Take(2).Select(x => x[0])).ToUpperInvariant();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Tenant.EnsureTenantResolvedAsync();
+
+        if (Tenant.IsTenantBlocked)
+        {
+            tenantReady = true;
+            return;
+        }
+
+        firm = await FirmService.GetCurrentAsync();
+        services = await ServiceItemService.GetAllAsync();
+        tenantReady = true;
+    }
+
+    private static string NormalizeColor(string? value, string fallback)
+    {
+        var color = value?.Trim();
+        if (string.IsNullOrWhiteSpace(color))
+            return fallback;
+
+        if (color.Length is not (7 or 9) || color[0] != '#')
+            return fallback;
+
+        return color.Skip(1).All(Uri.IsHexDigit) ? color : fallback;
+    }
+}

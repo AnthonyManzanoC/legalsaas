@@ -1,0 +1,45 @@
+@page "/servicios"
+@using LegalSaaS.Application.Interfaces
+@using LegalSaaS.Domain.Entities
+@inject IServiceItemService Service
+@inject ILawFirmSettingsService FirmService
+
+<section class="section-band">
+    <div class="section-heading">
+        <div>
+            <span class="eyebrow">Servicios legales</span>
+            <h2>@(firm?.Name ?? "Estudio juridico")</h2>
+        </div>
+        <p>Areas de practica presentadas como una experiencia comercial clara, confiable y lista para convertir.</p>
+    </div>
+
+    @if (services is null)
+    {
+        <div class="panel light">Cargando servicios...</div>
+    }
+    else
+    {
+        <div class="service-grid">
+            @foreach (var item in services)
+            {
+                <article class="service-card">
+                    <span class="badge-soft">@(!string.IsNullOrWhiteSpace(item.Slug) ? item.Slug : "servicio")</span>
+                    <h3>@item.Title</h3>
+                    <p>@item.Summary</p>
+                    <a class="btn-premium compact" href="/cita">Solicitar orientacion</a>
+                </article>
+            }
+        </div>
+    }
+</section>
+
+@code {
+    private LawFirmSettings? firm;
+    private List<ServiceItem>? services;
+
+    protected override async Task OnInitializedAsync()
+    {
+        firm = await FirmService.GetCurrentAsync();
+        services = await Service.GetAllAsync();
+    }
+}

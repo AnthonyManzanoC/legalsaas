@@ -1,0 +1,112 @@
+@page "/admin/editorial"
+@layout LegalSaaS.Web.Components.Layout.AdminLayout
+@attribute [Authorize(Roles = "Admin,Editor,Lawyer,SuperAdmin")]
+@using LegalSaaS.Application.Interfaces
+@using LegalSaaS.Domain.Entities
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@inject IEditorialPostService Service
+
+<div class="page-header">
+    <div>
+        <span class="eyebrow">Autoridad digital</span>
+        <h1>Editorial</h1>
+        <p>Publica articulos para educar al cliente, posicionar el estudio y elevar confianza.</p>
+    </div>
+    <a class="btn-ghost" href="/editorial">Ver editorial</a>
+</div>
+
+<div class="panel">
+    <EditForm Model="post" OnValidSubmit="SaveAsync">
+        <DataAnnotationsValidator />
+
+        <div class="admin-form-grid">
+            <label>
+                <span>Titulo</span>
+                <InputText @bind-Value="post.Title" />
+            </label>
+            <label>
+                <span>Autor</span>
+                <InputText @bind-Value="post.AuthorName" />
+            </label>
+            <label>
+                <span>Imagen de portada</span>
+                <LegalSaaS.Web.Components.Shared.ImageUploader Folder="editorial" OnUploaded="UploadCover" />
+            </label>
+            <label class="wide">
+                <span>Resumen</span>
+                <InputTextArea @bind-Value="post.Summary" />
+            </label>
+            <label class="wide">
+                <span>Contenido</span>
+                <InputTextArea rows="8" @bind-Value="post.Content" />
+            </label>
+            <label class="check-row">
+                <InputCheckbox @bind-Value="post.IsPublished" />
+                <span>Publicado</span>
+            </label>
+        </div>
+
+        <button class="btn-premium mt-3" type="submit">Guardar articulo</button>
+    </EditForm>
+</div>
+
+<div class="panel table-shell">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Titulo</th>
+                <th>Publicado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in posts)
+            {
+                <tr>
+                    <td>@item.Title</td>
+                    <td>@(item.IsPublished ? "Si" : "No")</td>
+                    <td>
+                        @if (!item.IsPublished)
+                        {
+                            <button class="btn btn-sm btn-success" @onclick="() => Publish(item.Id)">Publicar</button>
+                        }
+                        <button class="btn btn-sm btn-danger" @onclick="() => Delete(item.Id)">Eliminar</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private EditorialPost post = new();
+    private List<EditorialPost> posts = new();
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load() => posts = await Service.GetAllAsync();
+
+    private async Task SaveAsync()
+    {
+        if (post.Id == 0) await Service.AddAsync(post);
+        else await Service.UpdateAsync(post);
+
+        post = new EditorialPost();
+        await Load();
+    }
+
+    private async Task Delete(int id)
+    {
+        await Service.DeleteAsync(id);
+        await Load();
+    }
+
+    private async Task Publish(int id)
+    {
+        await Service.PublishAsync(id);
+        await Load();
+    }
+
+    private void UploadCover(string url) => post.CoverImageUrl = url;
+}

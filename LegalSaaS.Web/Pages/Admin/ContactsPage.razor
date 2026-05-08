@@ -1,0 +1,70 @@
+@page "/admin/contactos"
+@layout LegalSaaS.Web.Components.Layout.AdminLayout
+@attribute [Authorize(Roles = "Admin,Assistant,Lawyer,SuperAdmin")]
+@using LegalSaaS.Application.Interfaces
+@using LegalSaaS.Domain.Entities
+@using Microsoft.AspNetCore.Authorization
+@inject IContactMessageService ContactService
+
+<div class="page-header">
+    <div>
+        <span class="eyebrow">Bandeja comercial</span>
+        <h1>Mensajes de contacto</h1>
+        <p>Solicitudes publicas capturadas por el sitio del tenant.</p>
+    </div>
+</div>
+
+<div class="panel table-shell">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Cliente</th>
+                <th>Contacto</th>
+                <th>Asunto</th>
+                <th>Estado</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in messages)
+            {
+                <tr>
+                    <td>@item.FullName</td>
+                    <td>@item.Email<br />@item.Phone</td>
+                    <td>@item.Subject</td>
+                    <td><span class="badge-soft">@(item.IsRead ? "Leido" : "Nuevo")</span></td>
+                    <td>
+                        @if (!item.IsRead)
+                        {
+                            <button class="btn btn-sm btn-success" @onclick="() => MarkRead(item.Id)">Marcar leido</button>
+                        }
+                        <button class="btn btn-sm btn-danger" @onclick="() => Delete(item.Id)">Eliminar</button>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="5">@item.Message</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private List<ContactMessage> messages = new();
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load() => messages = await ContactService.GetAllAsync();
+
+    private async Task MarkRead(int id)
+    {
+        await ContactService.MarkAsReadAsync(id);
+        await Load();
+    }
+
+    private async Task Delete(int id)
+    {
+        await ContactService.DeleteAsync(id);
+        await Load();
+    }
+}

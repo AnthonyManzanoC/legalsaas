@@ -1,0 +1,113 @@
+@page "/cita"
+@using LegalSaaS.Application.Interfaces
+@using LegalSaaS.Domain.Entities
+@using Microsoft.AspNetCore.Components.Forms
+@inject IAppointmentService AppointmentService
+@inject ILawyerProfileService LawyerService
+
+<section class="hero">
+    <div class="hero-copy">
+        <span class="eyebrow">Agenda inteligente</span>
+        <h1>Solicita una cita sin llamadas innecesarias</h1>
+        <p>Elige un horario tentativo, explica el asunto y el estudio confirma o propone una alternativa desde el panel.</p>
+        <div class="hero-proof">
+            <div class="proof-card">
+                <strong>01</strong>
+                <span>Describe el caso</span>
+            </div>
+            <div class="proof-card">
+                <strong>02</strong>
+                <span>Propone horario</span>
+            </div>
+            <div class="proof-card">
+                <strong>03</strong>
+                <span>Recibe confirmacion</span>
+            </div>
+        </div>
+    </div>
+
+    <aside class="contact-card panel light">
+        <EditForm Model="request" OnValidSubmit="SendAsync" class="premium-form">
+            <DataAnnotationsValidator />
+
+            <label>
+                <span>Nombre completo</span>
+                <InputText @bind-Value="request.ClientName" />
+            </label>
+            <label>
+                <span>Telefono</span>
+                <InputText @bind-Value="request.ClientPhone" />
+            </label>
+            <label>
+                <span>Email</span>
+                <InputText @bind-Value="request.ClientEmail" />
+            </label>
+            <label>
+                <span>Asunto</span>
+                <InputText @bind-Value="request.Subject" />
+            </label>
+            <label>
+                <span>Inicio sugerido</span>
+                <input type="datetime-local" @bind="start" @bind:format="yyyy-MM-ddTHH:mm" />
+            </label>
+            <label>
+                <span>Fin sugerido</span>
+                <input type="datetime-local" @bind="end" @bind:format="yyyy-MM-ddTHH:mm" />
+            </label>
+            <label>
+                <span>Abogado</span>
+                <InputSelect @bind-Value="request.LawyerProfileId">
+                    <option value="">Sin preferencia</option>
+                    @foreach (var lawyer in lawyers)
+                    {
+                        <option value="@lawyer.Id">@lawyer.FullName</option>
+                    }
+                </InputSelect>
+            </label>
+            <label>
+                <span>Notas</span>
+                <InputTextArea @bind-Value="request.Notes" />
+            </label>
+
+            <button class="btn-premium full" type="submit">Enviar solicitud</button>
+
+            @if (!string.IsNullOrWhiteSpace(message))
+            {
+                <div class="notice @(success ? "success" : "danger")">@message</div>
+            }
+        </EditForm>
+    </aside>
+</section>
+
+@code {
+    private Appointment request = new();
+    private DateTime start = DateTime.Today.AddDays(1).AddHours(9);
+    private DateTime end = DateTime.Today.AddDays(1).AddHours(9).AddMinutes(45);
+    private List<LawyerProfile> lawyers = new();
+    private string? message;
+    private bool success;
+
+    protected override async Task OnInitializedAsync()
+    {
+        lawyers = await LawyerService.GetAllAsync();
+    }
+
+    private async Task SendAsync()
+    {
+        request.StartAt = start;
+        request.EndAt = end;
+        request.Status = AppointmentStatus.Requested;
+        request.Type = AppointmentType.Consultation;
+
+        var result = await AppointmentService.CreateAsync(request);
+        success = result.Success;
+        message = result.Message;
+
+        if (result.Success)
+        {
+            request = new Appointment();
+            start = DateTime.Today.AddDays(1).AddHours(9);
+            end = DateTime.Today.AddDays(1).AddHours(9).AddMinutes(45);
+        }
+    }
+}

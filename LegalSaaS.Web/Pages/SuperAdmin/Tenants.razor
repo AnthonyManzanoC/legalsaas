@@ -1,0 +1,162 @@
+@page "/superadmin/tenants"
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@rendermode InteractiveServer
+@layout LegalSaaS.Web.Components.Layout.AdminLayout
+@attribute [Authorize(Roles = "SuperAdmin")]
+@using LegalSaaS.Application.Interfaces
+@using LegalSaaS.Domain.Entities
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@inject ISuperAdminTenantService TenantService
+
+<div class="page-header">
+    <div>
+        <span class="eyebrow">Provisioning SaaS</span>
+        <h1>Tenants juridicos</h1>
+        <p>Crea estudios, usuarios administradores y suscripciones sin tocar SQL.</p>
+    </div>
+</div>
+
+<div class="panel">
+    <EditForm Model="form" OnValidSubmit="CreateTenantAsync">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="admin-form-grid">
+            <label>
+                <span>Nombre del estudio</span>
+                <InputText @bind-Value="form.Name" />
+            </label>
+            <label>
+                <span>Subdominio</span>
+                <InputText @bind-Value="form.Subdomain" />
+            </label>
+            <label>
+                <span>Plan</span>
+                <InputSelect @bind-Value="form.SubscriptionPlanId">
+                    <option value="0">Seleccionar plan</option>
+                    @foreach (var p in plans)
+                    {
+                        <option value="@p.Id">@p.Name - $@p.MonthlyPrice / ano</option>
+                    }
+                </InputSelect>
+            </label>
+            <label>
+                <span>Nombre admin</span>
+                <InputText @bind-Value="form.AdminFullName" />
+            </label>
+            <label>
+                <span>Email admin</span>
+                <InputText @bind-Value="form.AdminEmail" />
+            </label>
+            <label>
+                <span>Contrasena admin opcional</span>
+                <InputText type="password" @bind-Value="form.AdminPassword" />
+            </label>
+            <label>
+                <span>Dias iniciales de acceso</span>
+                <InputNumber @bind-Value="form.TrialDays" />
+            </label>
+        </div>
+
+        <button class="btn-premium mt-3" type="submit">Crear tenant</button>
+    </EditForm>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(resultMessage))
+{
+    <div class="notice @(success ? "success" : "danger")">@resultMessage</div>
+}
+
+@if (!string.IsNullOrWhiteSpace(generatedPassword))
+{
+    <div class="notice warning">Contrasena generada: <strong>@generatedPassword</strong></div>
+}
+
+<div class="panel table-shell">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Estudio</th>
+                <th>Subdominio</th>
+                <th>Activo</th>
+                <th>Vence</th>
+                <th>Estado</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var t in tenants)
+            {
+                <tr>
+                    <td>@t.Id</td>
+                    <td>@t.Name</td>
+                    <td>@t.Subdomain</td>
+                    <td>@(t.IsActive ? "Si" : "No")</td>
+                    <td>@(t.TrialEndsAt?.ToString("yyyy-MM-dd") ?? "N/A")</td>
+                    <td><span class="status-pill @TenantStatusClass(t)">@TenantStatusText(t)</span></td>
+                    <td>
+                        <div class="table-actions">
+                            <a class="btn-ghost btn-sm" href="/superadmin/tenants/edit/@t.Id">Editar</a>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private CreateTenantRequest form = new();
+    private List<Tenant> tenants = new();
+    private List<SubscriptionPlan> plans = new();
+    private string? resultMessage;
+    private string? generatedPassword;
+    private bool success;
+
+    protected override async Task OnInitializedAsync()
+    {
+        plans = await TenantService.GetPlansAsync();
+        await LoadTenantsAsync();
+        form.SubscriptionPlanId = plans.FirstOrDefault()?.Id ?? 0;
+    }
+
+    private async Task CreateTenantAsync()
+    {
+        var result = await TenantService.CreateTenantAsync(form);
+        success = result.Success;
+        resultMessage = result.Message;
+        generatedPassword = result.GeneratedPassword;
+
+        if (result.Success)
+        {
+            form = new CreateTenantRequest { SubscriptionPlanId = plans.FirstOrDefault()?.Id ?? 0 };
+            await LoadTenantsAsync();
+        }
+    }
+
+    private async Task LoadTenantsAsync()
+    {
+        tenants = await TenantService.GetTenantsAsync();
+    }
+
+    private static string TenantStatusText(Tenant tenant)
+    {
+        if (!tenant.IsActive)
+            return "Inactivo";
+
+        if (tenant.TrialEndsAt.HasValue && tenant.TrialEndsAt.Value < DateTime.UtcNow)
+            return "Vencido";
+
+        return "Activo";
+    }
+
+    private static string TenantStatusClass(Tenant tenant)
+    {
+        if (!tenant.IsActive || (tenant.TrialEndsAt.HasValue && tenant.TrialEndsAt.Value < DateTime.UtcNow))
+            return "danger";
+
+        return "approved";
+    }
+}

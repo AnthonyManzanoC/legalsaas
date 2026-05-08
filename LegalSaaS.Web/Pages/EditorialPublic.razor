@@ -1,0 +1,52 @@
+@page "/editorial"
+@using LegalSaaS.Application.Interfaces
+@using LegalSaaS.Domain.Entities
+@inject IEditorialPostService Service
+
+<section class="section-band">
+    <div class="section-heading">
+        <div>
+            <span class="eyebrow">Editorial legal</span>
+            <h2>Ideas que construyen confianza antes de la consulta</h2>
+        </div>
+        <p>Contenido claro para educar, posicionar al abogado y abrir conversaciones de alto valor.</p>
+    </div>
+
+    @if (posts is null)
+    {
+        <div class="panel light">Cargando articulos...</div>
+    }
+    else if (!PublishedPosts.Any())
+    {
+        <div class="panel light">Aun no hay articulos publicados.</div>
+    }
+    else
+    {
+        <div class="article-grid">
+            @foreach (var post in PublishedPosts)
+            {
+                <article class="article-card">
+                    @if (!string.IsNullOrWhiteSpace(post.CoverImageUrl))
+                    {
+                        <img src="@post.CoverImageUrl" alt="@post.Title" style="height: 180px; width: 100%; object-fit: cover; border-radius: 12px; margin-bottom: 1rem;" />
+                    }
+                    <span class="badge-soft">Por @post.AuthorName</span>
+                    <h3>@post.Title</h3>
+                    <p>@post.Summary</p>
+                </article>
+            }
+        </div>
+    }
+</section>
+
+@code {
+    private List<EditorialPost>? posts;
+
+    private IEnumerable<EditorialPost> PublishedPosts =>
+        posts?.Where(x => x.IsPublished).OrderByDescending(x => x.PublishedAt ?? x.CreatedAt) ?? Enumerable.Empty<EditorialPost>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        posts = await Service.GetAllAsync();
+    }
+}

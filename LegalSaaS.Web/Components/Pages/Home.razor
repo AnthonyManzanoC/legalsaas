@@ -1,0 +1,398 @@
+@page "/"
+@using LegalSaaS.Application.Interfaces
+@using LegalSaaS.Domain.Entities
+@inject ILawFirmSettingsService FirmService
+@inject ILawyerProfileService LawyerService
+@inject IServiceItemService ServiceService
+@inject ITestimonialService TestimonialService
+@inject ITenantContext Tenant
+
+@if (!tenantReady)
+{
+    <section class="section-band">
+        <div class="panel light">Validando experiencia del estudio...</div>
+    </section>
+}
+else if (Tenant.IsTenantBlocked)
+{
+    <section class="tenant-unavailable">
+        <div>
+            <span class="eyebrow">Sitio no disponible</span>
+            <h1>Sitio web temporalmente fuera de servicio</h1>
+            <p>Este dominio no esta disponible en este momento.</p>
+        </div>
+    </section>
+}
+else if (firm is null)
+{
+    <section class="section-band">
+        <div class="panel light">Cargando experiencia del estudio...</div>
+    </section>
+}
+else
+{
+    <section class="home-hero">
+        <div class="hero-copy">
+            <span class="eyebrow">Estudio juridico premium</span>
+            <h1>@HeroTitle</h1>
+            <p>@HeroSubtitle</p>
+
+            <div class="hero-actions">
+                <a class="btn-premium" href="/cita">Agendar consulta</a>
+                <a class="btn-ghost" href="/servicios">Explorar servicios</a>
+            </div>
+
+            <div class="hero-proof">
+                <div class="proof-card">
+                    <strong>@(lawyer?.ExperienceYears ?? "10+")</strong>
+                    <span>Anos de experiencia</span>
+                </div>
+                <div class="proof-card">
+                    <strong>@(services?.Count ?? 0)</strong>
+                    <span>Areas activas</span>
+                </div>
+                <div class="proof-card">
+                    <strong>24h</strong>
+                    <span>Respuesta inicial</span>
+                </div>
+            </div>
+        </div>
+
+        <aside class="lawyer-showcase">
+            <div class="lawyer-photo">
+                @if (!string.IsNullOrWhiteSpace(lawyer?.PhotoUrl))
+                {
+                    <img src="@lawyer.PhotoUrl" alt="@lawyer.FullName" />
+                }
+                else
+                {
+                    <div class="lawyer-placeholder">@Initials</div>
+                }
+            </div>
+            <div class="lawyer-card-copy">
+                <span class="eyebrow">Abogado principal</span>
+                <h2>@(lawyer?.FullName ?? firm.Name)</h2>
+                <p>@(lawyer?.Title ?? firm.HeroSubtitle ?? firm.BannerSubtitle ?? "Direccion legal del estudio")</p>
+            </div>
+        </aside>
+    </section>
+
+    <section class="section-band">
+        <div class="section-heading">
+            <div>
+                <span class="eyebrow">Servicios</span>
+                <h2>Practica legal lista para convertir clientes</h2>
+            </div>
+            <p>Una vitrina clara para que cada visitante entienda el valor del estudio y pida una cita sin friccion.</p>
+        </div>
+
+        <div class="service-grid">
+            @foreach (var item in FeaturedServices)
+            {
+                <article class="service-card">
+                    <span class="badge-soft">Area legal</span>
+                    <h3>@item.Title</h3>
+                    <p>@item.Summary</p>
+                    <a class="btn-ghost" href="/cita">Consultar</a>
+                </article>
+            }
+        </div>
+    </section>
+
+    <section class="section-band editorial-bio-section">
+        <div class="editorial-bio-grid">
+            <a class="editorial-portrait" href="@LawyerUrl" aria-label="Ver perfil de @(lawyer?.FullName ?? firm.Name)">
+                @if (!string.IsNullOrWhiteSpace(lawyer?.PhotoUrl))
+                {
+                    <img src="@lawyer.PhotoUrl" alt="@lawyer.FullName" />
+                }
+                else
+                {
+                    <div class="lawyer-placeholder">@Initials</div>
+                }
+            </a>
+
+            <article class="editorial-bio-copy">
+                <span class="eyebrow">Biografia editorial</span>
+                <h2>@BioTitle</h2>
+                <a class="editorial-name-link" href="@LawyerUrl">
+                    @(lawyer?.FullName ?? firm.Name)
+                </a>
+                <p>@BioText</p>
+                <div class="editorial-meta">
+                    <span>@(lawyer?.Title ?? firm.BannerSubtitle ?? "Direccion legal")</span>
+                    <span>@(lawyer?.RegistrationNumber ?? "Atencion profesional")</span>
+                </div>
+                <a class="btn-premium" href="@LawyerUrl">Leer perfil completo</a>
+            </article>
+        </div>
+    </section>
+
+    <section class="section-band">
+        <div class="section-heading">
+            <div>
+                <span class="eyebrow">Metodo</span>
+                <h2>Una experiencia juridica clara, humana y medible</h2>
+            </div>
+            <p>El sitio comunica criterio profesional sin perder cercania: cada bloque ayuda a convertir confianza en una consulta real.</p>
+        </div>
+
+        <div class="process-grid">
+            <article class="process-card">
+                <span>01</span>
+                <h3>Diagnostico preciso</h3>
+                <p>El cliente entiende su situacion, riesgos y siguientes pasos desde la primera conversacion.</p>
+            </article>
+            <article class="process-card">
+                <span>02</span>
+                <h3>Estrategia documentada</h3>
+                <p>Servicios, articulos, perfil y agenda trabajan juntos para sostener autoridad publica.</p>
+            </article>
+            <article class="process-card">
+                <span>03</span>
+                <h3>Acompanamiento continuo</h3>
+                <p>Contacto, ubicacion, WhatsApp y testimonios reducen friccion antes de agendar.</p>
+            </article>
+        </div>
+    </section>
+
+    <section class="section-band social-proof-section">
+        <div class="section-heading">
+            <div>
+                <span class="eyebrow">Prueba social</span>
+                <h2>Clientes que recomiendan con contexto</h2>
+            </div>
+            <p>Las resenas publicas aparecen solo cuando el administrador del tenant las aprueba.</p>
+        </div>
+
+        <div class="testimonial-experience">
+            <div class="testimonial-grid">
+                @if (approvedTestimonials.Count == 0)
+                {
+                    <article class="testimonial-card">
+                        <div class="stars" aria-label="5 de 5 estrellas">
+                            @for (var star = 1; star <= 5; star++)
+                            {
+                                <span class="star active">&#9733;</span>
+                            }
+                        </div>
+                        <p>"Atencion profesional, clara y cercana desde la primera consulta."</p>
+                        <strong>Cliente del estudio</strong>
+                    </article>
+                }
+                else
+                {
+                    @foreach (var item in approvedTestimonials.Take(6))
+                    {
+                        <article class="testimonial-card">
+                            <div class="stars" aria-label="@item.Rating de 5 estrellas">
+                                @for (var star = 1; star <= 5; star++)
+                                {
+                                    <span class="star @(star <= item.Rating ? "active" : null)">&#9733;</span>
+                                }
+                            </div>
+                            <p>"@ReviewText(item)"</p>
+                            <strong>@item.ClientName</strong>
+                        </article>
+                    }
+                }
+            </div>
+
+            <aside class="testimonial-form-card">
+                <span class="eyebrow">Deja tu resena</span>
+                <h3>Tu experiencia ayuda a otros clientes a decidir con calma.</h3>
+
+                @if (!string.IsNullOrWhiteSpace(testimonialStatus))
+                {
+                    <div class="notice success">@testimonialStatus</div>
+                }
+
+                <EditForm Model="testimonialForm" OnValidSubmit="SubmitTestimonial">
+                    <div class="premium-form">
+                        <label>
+                            <span>Nombre</span>
+                            <InputText @bind-Value="testimonialForm.ClientName" />
+                        </label>
+                        <label>
+                            <span>Calificacion</span>
+                            <InputNumber @bind-Value="testimonialForm.Rating" />
+                        </label>
+                        <label>
+                            <span>Resena</span>
+                            <InputTextArea @bind-Value="testimonialForm.ReviewText" />
+                        </label>
+                    </div>
+                    <button class="btn-premium full mt-3" type="submit">Enviar para aprobacion</button>
+                </EditForm>
+            </aside>
+        </div>
+    </section>
+
+    <section class="section-band location-section">
+        <div class="location-grid">
+            <article class="location-copy">
+                <span class="eyebrow">Ubicacion</span>
+                <h2>Agenda una consulta con el estudio</h2>
+                <p>@FooterAddress</p>
+                <div class="hero-actions">
+                    <a class="btn-premium" href="/cita">Agendar cita</a>
+                    @if (!string.IsNullOrWhiteSpace(firm.WhatsApp))
+                    {
+                        <a class="btn-ghost" href="@WhatsAppLink" target="_blank" rel="noopener">WhatsApp</a>
+                    }
+                </div>
+            </article>
+
+            <div class="map-panel">
+                @if (HasMap)
+                {
+                    <iframe src="@MapSource"
+                            title="Mapa de @(firm.Name)"
+                            loading="lazy"
+                            referrerpolicy="no-referrer-when-downgrade"></iframe>
+                }
+                else
+                {
+                    <div class="map-placeholder">
+                        <span>@(firm.City ?? "Ubicacion del estudio")</span>
+                        <p>Agrega el embed de Google Maps desde el panel de administracion.</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+}
+
+@code {
+    private LawFirmSettings? firm;
+    private LawyerProfile? lawyer;
+    private List<ServiceItem>? services;
+    private List<Testimonial> approvedTestimonials = new();
+    private Testimonial testimonialForm = new() { Rating = 5 };
+    private string? testimonialStatus;
+    private bool tenantReady;
+
+    private string HeroTitle =>
+        !string.IsNullOrWhiteSpace(firm?.HeroTitle)
+            ? firm.HeroTitle!
+            : "Defensa legal seria y confiable";
+
+    private string HeroSubtitle =>
+        !string.IsNullOrWhiteSpace(firm?.HeroSubtitle)
+            ? firm.HeroSubtitle!
+            : firm?.Description ?? "Asesoria y patrocinio juridico con enfoque profesional.";
+
+    private string Initials
+    {
+        get
+        {
+            var source = lawyer?.FullName ?? firm?.Name ?? "LS";
+            var parts = source.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            return string.Concat(parts.Take(2).Select(x => x[0])).ToUpperInvariant();
+        }
+    }
+
+    private IEnumerable<ServiceItem> FeaturedServices =>
+        (services is { Count: > 0 } ? services : DefaultServices).Take(6);
+
+    private string LawyerSlug =>
+        !string.IsNullOrWhiteSpace(lawyer?.PublicSlug)
+            ? lawyer.PublicSlug!
+            : Slugify(lawyer?.FullName ?? firm?.Name ?? "abogada");
+
+    private string LawyerUrl => $"/abogada/{LawyerSlug}";
+
+    private string BioTitle =>
+        !string.IsNullOrWhiteSpace(firm?.EditorialBioTitle)
+            ? firm.EditorialBioTitle!
+            : lawyer?.Title ?? "Una mirada legal editorial, estrategica y humana";
+
+    private string BioText =>
+        !string.IsNullOrWhiteSpace(firm?.EditorialBioText)
+            ? firm.EditorialBioText!
+            : lawyer?.Biography ?? firm?.Description ?? "Conoce la trayectoria, criterio y forma de trabajo que sostienen cada consulta del estudio.";
+
+    private string FooterAddress =>
+        string.Join(", ", new[] { firm?.Address, firm?.City }.Where(x => !string.IsNullOrWhiteSpace(x))) is { Length: > 0 } address
+            ? address
+            : "Atencion presencial y virtual segun disponibilidad del estudio.";
+
+    private string WhatsAppLink =>
+        $"https://wa.me/{new string((firm?.WhatsApp ?? string.Empty).Where(char.IsDigit).ToArray())}";
+
+    private string MapSource => ExtractMapSource(firm?.MapEmbedUrl) ?? ExtractMapSource(firm?.GoogleMapsUrl) ?? string.Empty;
+
+    private bool HasMap => !string.IsNullOrWhiteSpace(MapSource);
+
+    private static List<ServiceItem> DefaultServices => new()
+    {
+        new ServiceItem { Title = "Consulta estrategica", Summary = "Analisis inicial del caso y plan de accion legal." },
+        new ServiceItem { Title = "Derecho de familia", Summary = "Procesos sensibles con comunicacion clara y humana." },
+        new ServiceItem { Title = "Derecho civil", Summary = "Contratos, obligaciones y defensa patrimonial." }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Tenant.EnsureTenantResolvedAsync();
+
+        if (Tenant.IsTenantBlocked)
+        {
+            tenantReady = true;
+            return;
+        }
+
+        firm = await FirmService.GetCurrentAsync();
+        lawyer = await LawyerService.GetCurrentAsync();
+        services = await ServiceService.GetAllAsync();
+        approvedTestimonials = await TestimonialService.GetApprovedAsync();
+        tenantReady = true;
+    }
+
+    private async Task SubmitTestimonial()
+    {
+        if (string.IsNullOrWhiteSpace(testimonialForm.ClientName) || string.IsNullOrWhiteSpace(testimonialForm.ReviewText))
+        {
+            testimonialStatus = "Escribe tu nombre y una resena antes de enviar.";
+            return;
+        }
+
+        await TestimonialService.SubmitPublicAsync(testimonialForm);
+        testimonialForm = new Testimonial { Rating = 5 };
+        testimonialStatus = "Gracias. Tu testimonio quedo pendiente de aprobacion.";
+    }
+
+    private static string ReviewText(Testimonial item) =>
+        !string.IsNullOrWhiteSpace(item.ReviewText)
+            ? item.ReviewText!
+            : item.Content ?? "Experiencia positiva con el estudio.";
+
+    private static string Slugify(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return "abogada";
+
+        var normalized = text.ToLowerInvariant().Trim();
+        normalized = System.Text.RegularExpressions.Regex.Replace(normalized, @"[^a-z0-9\s-]", "");
+        normalized = System.Text.RegularExpressions.Regex.Replace(normalized, @"\s+", "-");
+        normalized = System.Text.RegularExpressions.Regex.Replace(normalized, "-+", "-");
+        return normalized.Trim('-');
+    }
+
+    private static string? ExtractMapSource(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+
+        var trimmed = value.Trim();
+        var src = ExtractAttribute(trimmed, "src=\"", "\"") ?? ExtractAttribute(trimmed, "src='", "'");
+        return string.IsNullOrWhiteSpace(src) ? trimmed : src;
+    }
+
+    private static string? ExtractAttribute(string value, string marker, string close)
+    {
+        var start = value.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (start < 0) return null;
+
+        start += marker.Length;
+        var end = value.IndexOf(close, start, StringComparison.OrdinalIgnoreCase);
+        return end > start ? value[start..end] : null;
+    }
+}

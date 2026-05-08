@@ -1,0 +1,96 @@
+@page "/superadmin/plans"
+@layout LegalSaaS.Web.Components.Layout.AdminLayout
+@attribute [Authorize(Roles = "SuperAdmin")]
+@using LegalSaaS.Domain.Entities
+@using LegalSaaS.Infrastructure.Data
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext Db
+
+<div class="page-header">
+    <div>
+        <span class="eyebrow">Pricing engine</span>
+        <h1>Planes comerciales</h1>
+        <p>Modelo offline billing: un plan anual manual de $100 administrado por Super Admin.</p>
+    </div>
+</div>
+
+<div class="panel">
+    <EditForm Model="plan" OnValidSubmit="SaveAsync">
+        <div class="admin-form-grid">
+            <label>
+                <span>Codigo</span>
+                <InputText @bind-Value="plan.Code" />
+            </label>
+            <label>
+                <span>Nombre</span>
+                <InputText @bind-Value="plan.Name" />
+            </label>
+            <label>
+                <span>Precio anual</span>
+                <InputNumber @bind-Value="plan.MonthlyPrice" />
+            </label>
+            <label>
+                <span>Max usuarios</span>
+                <InputNumber @bind-Value="plan.MaxUsers" />
+            </label>
+            <label>
+                <span>Max abogados</span>
+                <InputNumber @bind-Value="plan.MaxLawyers" />
+            </label>
+            <label>
+                <span>Orden</span>
+                <InputNumber @bind-Value="plan.SortOrder" />
+            </label>
+            <label class="check-row">
+                <InputCheckbox @bind-Value="plan.IsHighlighted" />
+                <span>Destacado</span>
+            </label>
+        </div>
+        <button class="btn-premium mt-3" type="submit">Guardar plan</button>
+    </EditForm>
+</div>
+
+<div class="plans-grid">
+    @foreach (var item in plans)
+    {
+        <article class="plan-card">
+            <span class="badge-soft">@item.Code</span>
+            <h3>@item.Name</h3>
+            <p>$@item.MonthlyPrice / ano</p>
+            <p>@item.MaxUsers usuarios, @item.MaxLawyers abogados</p>
+            <p>@(item.IsActive ? "Activo para nuevos tenants" : "Inactivo")</p>
+        </article>
+    }
+</div>
+
+@code {
+    private SubscriptionPlan plan = new() { TenantId = 0, IsActive = true };
+    private List<SubscriptionPlan> plans = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        plans = await Db.SubscriptionPlans.OrderBy(x => x.SortOrder).ToListAsync();
+    }
+
+    private async Task SaveAsync()
+    {
+        plan.TenantId = 0;
+        plan.IsActive = true;
+
+        if (plan.Id == 0)
+            Db.SubscriptionPlans.Add(plan);
+        else
+            Db.SubscriptionPlans.Update(plan);
+
+        await Db.SaveChangesAsync();
+        plan = new SubscriptionPlan { TenantId = 0, IsActive = true };
+        await Load();
+    }
+}

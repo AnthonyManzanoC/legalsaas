@@ -1,0 +1,47 @@
+@page "/superadmin/configuracion"
+@layout LegalSaaS.Web.Components.Layout.AdminLayout
+@attribute [Authorize(Roles = "SuperAdmin")]
+@using Microsoft.AspNetCore.Authorization
+
+<div class="page-header">
+    <div>
+        <span class="eyebrow">Configuracion global</span>
+        <h1>Control de plataforma</h1>
+        <p>Vista central para revisar los pilares operativos del SaaS sin entrar a un tenant.</p>
+    </div>
+</div>
+
+<section class="command-center-hero">
+    <div>
+        <span class="eyebrow">Platform scope</span>
+        <h2>Configuracion Global</h2>
+        <p>Parametros compartidos de identidad, tenancy, suscripciones y operacion base.</p>
+    </div>
+    <div class="command-pulse">
+        <span>Alcance</span>
+        <strong>Global</strong>
+    </div>
+</section>
+
+<div class="dashboard-grid">
+    <article class="metric-card elite">
+        <span>Identidad</span>
+        <h2>Roles</h2>
+        <small>SuperAdmin, administradores de estudio y perfiles operativos.</small>
+    </article>
+    <article class="metric-card elite">
+        <span>Tenancy</span>
+        <h2>Aislado</h2>
+        <small>Resolucion por subdominio y contexto global protegido.</small>
+    </article>
+    <article class="metric-card elite">
+        <span>Billing</span>
+        <h2>Planes</h2>
+        <small>Catalogo comercial conectado con suscripciones de tenants.</small>
+    </article>
+    <article class="metric-card elite">
+        <span>Seguridad</span>
+        <h2>Activa</h2>
+        <small>Acceso restringido a rol SuperAdmin.</small>
+    </article>
+</div>

@@ -1,0 +1,76 @@
+@page "/contacto"
+@using LegalSaaS.Application.Interfaces
+@using LegalSaaS.Domain.Entities
+@using Microsoft.AspNetCore.Components.Forms
+@inject IContactMessageService ContactService
+@inject ILawFirmSettingsService FirmService
+
+<section class="hero">
+    <div class="hero-copy">
+        <span class="eyebrow">Contacto</span>
+        <h1>Conversemos con claridad desde el primer mensaje</h1>
+        <p>@(firm?.Description ?? "Envia los datos esenciales de tu caso y el estudio podra responder con contexto.")</p>
+        <div class="hero-actions">
+            <a class="btn-premium" href="/cita">Prefiero agendar cita</a>
+            @if (!string.IsNullOrWhiteSpace(firm?.WhatsApp))
+            {
+                <a class="btn-ghost" href="https://wa.me/@DigitsOnly(firm.WhatsApp)">WhatsApp</a>
+            }
+        </div>
+    </div>
+
+    <aside class="contact-card panel light">
+        <EditForm Model="message" OnValidSubmit="SendAsync" class="premium-form">
+            <DataAnnotationsValidator />
+
+            <label>
+                <span>Nombre</span>
+                <InputText @bind-Value="message.FullName" />
+            </label>
+            <label>
+                <span>Telefono</span>
+                <InputText @bind-Value="message.Phone" />
+            </label>
+            <label>
+                <span>Email</span>
+                <InputText @bind-Value="message.Email" />
+            </label>
+            <label>
+                <span>Asunto</span>
+                <InputText @bind-Value="message.Subject" />
+            </label>
+            <label>
+                <span>Mensaje</span>
+                <InputTextArea @bind-Value="message.Message" />
+            </label>
+
+            <button class="btn-premium full" type="submit">Enviar mensaje</button>
+
+            @if (!string.IsNullOrWhiteSpace(success))
+            {
+                <div class="notice success">@success</div>
+            }
+        </EditForm>
+    </aside>
+</section>
+
+@code {
+    private ContactMessage message = new();
+    private LawFirmSettings? firm;
+    private string? success;
+
+    protected override async Task OnInitializedAsync()
+    {
+        firm = await FirmService.GetCurrentAsync();
+    }
+
+    private async Task SendAsync()
+    {
+        await ContactService.AddAsync(message);
+        message = new ContactMessage();
+        success = "Tu mensaje fue enviado correctamente.";
+    }
+
+    private static string DigitsOnly(string value) =>
+        new(value.Where(char.IsDigit).ToArray());
+}

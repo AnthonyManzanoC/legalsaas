@@ -1,0 +1,183 @@
+@page "/admin/citas"
+@layout LegalSaaS.Web.Components.Layout.AdminLayout
+@attribute [Authorize(Roles = "Admin,Editor,Lawyer,Assistant,SuperAdmin")]
+@using LegalSaaS.Application.Interfaces
+@using LegalSaaS.Domain.Entities
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@inject IAppointmentService AppointmentService
+@inject ILawyerProfileService LawyerService
+
+<div class="page-header">
+    <div>
+        <span class="eyebrow">Agenda de citas</span>
+        <h1>Calendario comercial del estudio</h1>
+        <p>Registra solicitudes, evita cruces y controla el estado de cada atencion.</p>
+    </div>
+    <a class="btn-ghost" href="/cita">Formulario publico</a>
+</div>
+
+<div class="panel">
+    <EditForm Model="form" OnValidSubmit="SaveAsync">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="admin-form-grid">
+            <label>
+                <span>Cliente</span>
+                <InputText @bind-Value="form.ClientName" />
+            </label>
+            <label>
+                <span>Telefono</span>
+                <InputText @bind-Value="form.ClientPhone" />
+            </label>
+            <label>
+                <span>Email</span>
+                <InputText @bind-Value="form.ClientEmail" />
+            </label>
+            <label>
+                <span>Asunto</span>
+                <InputText @bind-Value="form.Subject" />
+            </label>
+            <label>
+                <span>Inicio</span>
+                <input type="datetime-local" @bind="startAt" @bind:format="yyyy-MM-ddTHH:mm" />
+            </label>
+            <label>
+                <span>Fin</span>
+                <input type="datetime-local" @bind="endAt" @bind:format="yyyy-MM-ddTHH:mm" />
+            </label>
+            <label>
+                <span>Tipo</span>
+                <InputSelect @bind-Value="form.Type">
+                    @foreach (var item in Enum.GetValues<AppointmentType>())
+                    {
+                        <option value="@item">@Label(item)</option>
+                    }
+                </InputSelect>
+            </label>
+            <label>
+                <span>Abogado</span>
+                <InputSelect @bind-Value="form.LawyerProfileId">
+                    <option value="">Sin asignar</option>
+                    @foreach (var lawyer in lawyers)
+                    {
+                        <option value="@lawyer.Id">@lawyer.FullName</option>
+                    }
+                </InputSelect>
+            </label>
+            <label>
+                <span>Ubicacion</span>
+                <InputText @bind-Value="form.Location" />
+            </label>
+            <label class="wide">
+                <span>Notas</span>
+                <InputTextArea @bind-Value="form.Notes" />
+            </label>
+        </div>
+
+        <button class="btn-premium mt-3" type="submit">Guardar cita</button>
+    </EditForm>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(message))
+{
+    <div class="notice @(success ? "success" : "danger")">@message</div>
+}
+
+<div class="panel table-shell">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Cliente</th>
+                <th>Asunto</th>
+                <th>Inicio</th>
+                <th>Estado</th>
+                <th>Abogado</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var a in appointments)
+            {
+                <tr>
+                    <td>@a.ClientName</td>
+                    <td>@a.Subject</td>
+                    <td>@a.StartAt.ToString("yyyy-MM-dd HH:mm")</td>
+                    <td><span class="badge-soft">@Label(a.Status)</span></td>
+                    <td>@(a.LawyerProfile?.FullName ?? "Sin asignar")</td>
+                    <td>
+                        <button class="btn btn-sm btn-success" @onclick="() => ChangeStatus(a.Id, AppointmentStatus.Confirmed)">Confirmar</button>
+                        <button class="btn btn-sm btn-secondary" @onclick="() => ChangeStatus(a.Id, AppointmentStatus.Completed)">Cerrar</button>
+                        <button class="btn btn-sm btn-danger" @onclick="() => ChangeStatus(a.Id, AppointmentStatus.Cancelled)">Cancelar</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private Appointment form = new();
+    private DateTime startAt = DateTime.Today.AddHours(9);
+    private DateTime endAt = DateTime.Today.AddHours(10);
+    private List<Appointment> appointments = new();
+    private List<LawyerProfile> lawyers = new();
+    private string? message;
+    private bool success;
+
+    protected override async Task OnInitializedAsync()
+    {
+        lawyers = await LawyerService.GetAllAsync();
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        appointments = await AppointmentService.GetAllAsync();
+    }
+
+    private async Task SaveAsync()
+    {
+        form.StartAt = startAt;
+        form.EndAt = endAt;
+
+        var result = await AppointmentService.CreateAsync(form);
+        success = result.Success;
+        message = result.Message;
+
+        if (result.Success)
+        {
+            form = new Appointment();
+            startAt = DateTime.Today.AddHours(9);
+            endAt = DateTime.Today.AddHours(10);
+            await Load();
+        }
+    }
+
+    private async Task ChangeStatus(int id, AppointmentStatus status)
+    {
+        await AppointmentService.UpdateStatusAsync(id, status);
+        await Load();
+    }
+
+    private static string Label(AppointmentType value) => value switch
+    {
+        AppointmentType.Consultation => "Consulta",
+        AppointmentType.Hearing => "Audiencia",
+        AppointmentType.Call => "Llamada",
+        AppointmentType.FollowUp => "Seguimiento",
+        _ => value.ToString()
+    };
+
+    private static string Label(AppointmentStatus value) => value switch
+    {
+        AppointmentStatus.Requested => "Solicitada",
+        AppointmentStatus.Confirmed => "Confirmada",
+        AppointmentStatus.Rescheduled => "Reprogramada",
+        AppointmentStatus.Completed => "Completada",
+        AppointmentStatus.Cancelled => "Cancelada",
+        AppointmentStatus.NoShow => "No asistio",
+        _ => value.ToString()
+    };
+}

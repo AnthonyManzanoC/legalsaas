@@ -1,0 +1,96 @@
+@page "/login"
+@layout LegalSaaS.Web.Components.Layout.MainLayout
+@using LegalSaaS.Application.Interfaces
+@inject NavigationManager Navigation
+@inject ITenantContext Tenant
+
+<section class="auth-screen">
+    <div class="auth-panel">
+        @if (Tenant.IsTenantBlocked || showExpired)
+        {
+            <div class="eyebrow">Suscripcion requerida</div>
+            <h1>Suscripción Anual Vencida</h1>
+            <p>Para renovar tu plan anual ($100), por favor comunícate con Soporte Técnico / Super Admin para realizar tu transferencia.</p>
+
+            <div class="notice warning">
+                Cuando el Super Admin registre la renovacion anual, todos los servicios del panel se reactivaran automaticamente.
+            </div>
+
+            <form method="post" action="/account/login" class="premium-form">
+                <input type="hidden" name="ReturnUrl" value="@returnUrl" />
+                <label>
+                    <span>Acceso soporte / Super Admin</span>
+                    <input name="Email" type="email" value="@email" autocomplete="username" placeholder="superadmin@legalsaas.local" required />
+                </label>
+                <label>
+                    <span>Contrasena</span>
+                    <input name="Password" type="password" autocomplete="current-password" placeholder="********" required />
+                </label>
+                <button class="btn-premium full" type="submit">Entrar como soporte</button>
+            </form>
+        }
+        else
+        {
+            <div class="eyebrow">Acceso privado</div>
+            <h1>Entra al panel de tu estudio</h1>
+            <p>Administra tu sitio, agenda, servicios y contenido desde una cabina profesional.</p>
+
+            @if (showError)
+            {
+                <div class="notice danger">Credenciales invalidas. Verifica tu correo y contrasena.</div>
+            }
+
+            @if (showDenied)
+            {
+                <div class="notice warning">Tu usuario no tiene permiso para abrir esa vista.</div>
+            }
+
+            <form method="post" action="/account/login" class="premium-form">
+                <input type="hidden" name="ReturnUrl" value="@returnUrl" />
+
+                <label>
+                    <span>Correo electronico</span>
+                    <input name="Email" type="email" value="@email" autocomplete="username" placeholder="admin@segura.com" required />
+                </label>
+
+                <label>
+                    <span>Contrasena</span>
+                    <input name="Password" type="password" autocomplete="current-password" placeholder="********" required />
+                </label>
+
+                <label class="check-row">
+                    <input name="RememberMe" type="checkbox" value="true" />
+                    <span>Mantener sesion iniciada</span>
+                </label>
+
+                <button class="btn-premium full" type="submit">Entrar al panel</button>
+            </form>
+
+            <div class="auth-hint">
+                SuperAdmin inicial: <strong>superadmin@legalsaas.local</strong>
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    private bool showError;
+    private bool showDenied;
+    private bool showExpired;
+    private string? email;
+    private string? returnUrl;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Tenant.EnsureTenantResolvedAsync();
+
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+
+        showError = query.ContainsKey("error");
+        showDenied = query.ContainsKey("denied");
+        showExpired = query.ContainsKey("expired");
+        email = query.TryGetValue("email", out var emailValue) ? emailValue.ToString() : null;
+        returnUrl = query.TryGetValue("returnUrl", out var returnValue) ? returnValue.ToString() : null;
+    }
+}

@@ -1,0 +1,73 @@
+@using Microsoft.AspNetCore.Components.Authorization
+
+<nav class="admin-nav">
+    <AuthorizeView Roles="SuperAdmin">
+        <Authorized>
+            <div class="nav-section">Plataforma</div>
+            <NavLink class="admin-nav-link" href="/superadmin/dashboard" Match="NavLinkMatch.All">
+                <span class="nav-icon" aria-hidden="true">01</span> <span class="nav-label">Dashboard Global</span>
+            </NavLink>
+            <NavLink class="admin-nav-link" href="/superadmin/tenants">
+                <span class="nav-icon" aria-hidden="true">02</span> <span class="nav-label">Tenants / Estudios</span>
+            </NavLink>
+            <NavLink class="admin-nav-link" href="/superadmin/plans">
+                <span class="nav-icon" aria-hidden="true">03</span> <span class="nav-label">Planes de Suscripcion</span>
+            </NavLink>
+            <NavLink class="admin-nav-link" href="/superadmin/configuracion">
+                <span class="nav-icon" aria-hidden="true">04</span> <span class="nav-label">Configuracion Global</span>
+            </NavLink>
+        </Authorized>
+
+        <NotAuthorized>
+            <div class="nav-section">Operacion</div>
+            <NavLink class="admin-nav-link" href="/admin/dashboard" Match="NavLinkMatch.All">
+                <span class="nav-icon" aria-hidden="true">01</span> <span class="nav-label">Dashboard</span>
+            </NavLink>
+            <NavLink class="admin-nav-link" href="/admin/estudio">
+                <span class="nav-icon" aria-hidden="true">02</span> <span class="nav-label">Estudio</span>
+            </NavLink>
+            <NavLink class="admin-nav-link" href="/admin/abogada">
+                <span class="nav-icon" aria-hidden="true">03</span> <span class="nav-label">Perfil Abogada</span>
+            </NavLink>
+            <NavLink class="admin-nav-link" href="/admin/servicios">
+                <span class="nav-icon" aria-hidden="true">04</span> <span class="nav-label">Servicios</span>
+            </NavLink>
+            <NavLink class="admin-nav-link" href="/admin/citas">
+                <span class="nav-icon" aria-hidden="true">05</span> <span class="nav-label">Agenda</span>
+            </NavLink>
+
+            <div class="nav-section">Crecimiento</div>
+            <NavLink class="admin-nav-link" href="/admin/editorial">
+                <span class="nav-icon" aria-hidden="true">06</span> <span class="nav-label">Editorial</span>
+            </NavLink>
+            <NavLink class="admin-nav-link" href="/admin/equipo">
+                <span class="nav-icon" aria-hidden="true">07</span> <span class="nav-label">Equipo</span>
+            </NavLink>
+            <NavLink class="admin-nav-link" href="/admin/testimonios">
+                <span class="nav-icon" aria-hidden="true">08</span> <span class="nav-label">Testimonios</span>
+            </NavLink>
+            <NavLink class="admin-nav-link" href="/admin/contactos">
+                <span class="nav-icon" aria-hidden="true">09</span> <span class="nav-label">Mensajes</span>
+            </NavLink>
+            <NavLink class="admin-nav-link" href="/admin/suscripcion">
+                <span class="nav-icon" aria-hidden="true">$</span> <span class="nav-label">Suscripcion</span>
+            </NavLink>
+            <NavLink class="admin-nav-link" href="/admin/permisos">
+                <span class="nav-icon" aria-hidden="true">10</span> <span class="nav-label">Permisos</span>
+            </NavLink>
+        </NotAuthorized>
+    </AuthorizeView>
+
+    <div class="nav-spacer" style="margin-top: 2rem;"></div>
+
+    <a class="admin-nav-link public-return" href="/">
+        <span class="nav-icon" aria-hidden="true">GO</span> <span class="nav-label">Ver sitio publico</span>
+    </a>
+
+    <form action="/Account/Logout" method="post" class="mt-2">
+        <AntiforgeryToken />
+        <button type="submit" class="admin-nav-link text-danger" style="border: none; background: transparent; width: 100%; text-align: left; cursor: pointer;">
+            <span class="nav-icon text-danger" aria-hidden="true">OUT</span> <span class="nav-label fw-bold">Cerrar Sesion</span>
+        </button>
+    </form>
+</nav>

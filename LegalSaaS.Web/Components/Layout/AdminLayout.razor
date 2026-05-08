@@ -1,0 +1,92 @@
+@inherits LayoutComponentBase
+@inject ITenantContext Tenant
+
+@if (!tenantReady)
+{
+    <div class="admin-shell">
+        <section class="admin-stage">
+            <main class="admin-content">
+                <div class="panel">Validando tenant y suscripcion...</div>
+            </main>
+        </section>
+    </div>
+}
+else
+{
+<div class="admin-shell">
+    <aside class="admin-sidebar">
+        <a class="admin-brand" href="@DashboardHref">
+            <span class="brand-mark">LS</span>
+            <span>
+                <strong>LegalSaaS</strong>
+                <small>@(Tenant.IsSuperAdmin ? "Command Center" : Tenant.TenantName ?? "Estudio")</small>
+            </span>
+        </a>
+        <div class="sidebar-status">
+            <span class="@(Tenant.IsTenantBlocked && !Tenant.IsSuperAdmin ? "blocked" : null)"></span>
+            <strong>@SidebarStatus</strong>
+        </div>
+        @if (!Tenant.IsTenantBlocked || Tenant.IsSuperAdmin)
+        {
+            <NavMenu />
+        }
+    </aside>
+
+    <section class="admin-stage">
+        <header class="admin-topbar">
+            <div>
+                <span class="eyebrow">Operacion legal</span>
+                <strong>@(Tenant.IsSuperAdmin ? "Vista plataforma" : Tenant.TenantName ?? "Panel del estudio")</strong>
+            </div>
+            <AuthorizeView>
+                <Authorized Context="auth">
+                    <div class="topbar-user">
+                        <small>@(Tenant.IsSuperAdmin ? "SuperAdmin" : "Admin")</small>
+                        <span class="topbar-user-name">@(auth.User.FindFirst("full_name")?.Value ?? auth.User.Identity?.Name)</span>
+                        <form method="post" action="/account/logout">
+                            <button class="logout-button" title="Cerrar sesion" type="submit">Cerrar sesion</button>
+                        </form>
+                    </div>
+                </Authorized>
+            </AuthorizeView>
+        </header>
+
+        <main class="admin-content">
+            @if (Tenant.IsTenantBlocked && !Tenant.IsSuperAdmin)
+            {
+                <section class="admin-paywall panel">
+                    <span class="eyebrow">Suscripcion requerida</span>
+                    <h1>Suscripción Anual Vencida</h1>
+                    <p>Para renovar tu plan anual ($100), por favor comunícate con Soporte Técnico / Super Admin para realizar tu transferencia.</p>
+                    <div class="paywall-meta">
+                        <span>Estado: @Tenant.TenantBlockReason</span>
+                        <span>Vence: @(Tenant.SubscriptionEndsAt?.ToString("yyyy-MM-dd") ?? "Sin fecha registrada")</span>
+                    </div>
+                    <form method="post" action="/account/logout">
+                        <button class="btn-premium mt-3" type="submit">Cerrar sesion</button>
+                    </form>
+                </section>
+            }
+            else
+            {
+                @Body
+            }
+        </main>
+    </section>
+</div>
+}
+
+@code {
+    private bool tenantReady;
+    private string DashboardHref => Tenant.IsSuperAdmin ? "/superadmin/dashboard" : "/admin/dashboard";
+    private string SidebarStatus =>
+        Tenant.IsSuperAdmin
+            ? "Platform online"
+            : Tenant.IsTenantBlocked ? "Suscripcion bloqueada" : "Tenant aislado";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Tenant.EnsureTenantResolvedAsync();
+        tenantReady = true;
+    }
+}

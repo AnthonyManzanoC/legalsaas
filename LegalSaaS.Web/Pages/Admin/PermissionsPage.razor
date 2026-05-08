@@ -1,0 +1,137 @@
+@page "/admin/permisos"
+@layout LegalSaaS.Web.Components.Layout.AdminLayout
+@attribute [Authorize(Roles = "Admin,SuperAdmin")]
+@using LegalSaaS.Application.Interfaces
+@using LegalSaaS.Domain.Entities
+@using LegalSaaS.Infrastructure.Data
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext Db
+@inject ITenantContext Tenant
+@inject IRolePermissionService PermissionService
+
+<div class="page-header">
+    <div>
+        <span class="eyebrow">Gobierno del tenant</span>
+        <h1>Permisos por rol</h1>
+        <p>Ajusta que puede ver y operar cada perfil dentro del estudio.</p>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="admin-form-grid">
+        <label>
+            <span>Rol</span>
+            <select @bind="selectedRole">
+                @foreach (var role in roles)
+                {
+                    <option value="@role">@role</option>
+                }
+            </select>
+        </label>
+    </div>
+    <button class="btn-premium mt-3" @onclick="Load">Cargar rol</button>
+</div>
+
+<div class="panel table-shell">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Modulo</th>
+                <th>Ver</th>
+                <th>Crear</th>
+                <th>Editar</th>
+                <th>Eliminar</th>
+                <th>Publicar</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in rows)
+            {
+                <tr>
+                    <td>@row.ModuleKey</td>
+                    <td><input type="checkbox" @bind="row.CanView" /></td>
+                    <td><input type="checkbox" @bind="row.CanCreate" /></td>
+                    <td><input type="checkbox" @bind="row.CanEdit" /></td>
+                    <td><input type="checkbox" @bind="row.CanDelete" /></td>
+                    <td><input type="checkbox" @bind="row.CanPublish" /></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <button class="btn-premium mt-3" @onclick="Save">Guardar matriz</button>
+    @if (!string.IsNullOrWhiteSpace(message))
+    {
+        <div class="notice success">@message</div>
+    }
+</div>
+
+@code {
+    private readonly string[] roles = ["Admin", "Editor", "Lawyer", "Assistant"];
+    private readonly string[] modules =
+    [
+        ModuleKeys.Dashboard, ModuleKeys.Settings, ModuleKeys.LawyerProfile, ModuleKeys.Services,
+        ModuleKeys.Editorial, ModuleKeys.Team, ModuleKeys.Testimonials, ModuleKeys.Contacts,
+        ModuleKeys.Appointments, ModuleKeys.Subscriptions, ModuleKeys.Permissions
+    ];
+
+    private string selectedRole = "Admin";
+    private List<PermissionRow> rows = new();
+    private string? message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Tenant.EnsureTenantResolvedAsync();
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        await Tenant.EnsureTenantResolvedAsync();
+        message = null;
+        var existing = await Db.RoleModulePermissions
+            .IgnoreQueryFilters()
+            .Where(x => (x.TenantId == Tenant.TenantId || x.TenantId == 0) && x.RoleName == selectedRole)
+            .OrderByDescending(x => x.TenantId)
+            .ToListAsync();
+
+        rows = modules.Select(module =>
+        {
+            var current = existing.FirstOrDefault(x => x.ModuleKey == module);
+            return new PermissionRow
+            {
+                ModuleKey = module,
+                CanView = current?.CanView ?? selectedRole == "Admin",
+                CanCreate = current?.CanCreate ?? selectedRole == "Admin",
+                CanEdit = current?.CanEdit ?? selectedRole == "Admin",
+                CanDelete = current?.CanDelete ?? selectedRole == "Admin",
+                CanPublish = current?.CanPublish ?? selectedRole == "Admin"
+            };
+        }).ToList();
+    }
+
+    private async Task Save()
+    {
+        var tenantId = Tenant.TenantId == 0 ? 0 : Tenant.TenantId;
+        await PermissionService.SaveMatrixAsync(tenantId, selectedRole, rows.Select(x => new RoleModulePermission
+        {
+            ModuleKey = x.ModuleKey,
+            CanView = x.CanView,
+            CanCreate = x.CanCreate,
+            CanEdit = x.CanEdit,
+            CanDelete = x.CanDelete,
+            CanPublish = x.CanPublish
+        }));
+        message = "Permisos guardados.";
+    }
+
+    private sealed class PermissionRow
+    {
+        public string ModuleKey { get; set; } = string.Empty;
+        public bool CanView { get; set; }
+        public bool CanCreate { get; set; }
+        public bool CanEdit { get; set; }
+        public bool CanDelete { get; set; }
+        public bool CanPublish { get; set; }
+    }
+}

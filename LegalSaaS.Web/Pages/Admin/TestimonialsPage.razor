@@ -1,0 +1,113 @@
+@page "/admin/testimonios"
+@layout LegalSaaS.Web.Components.Layout.AdminLayout
+@attribute [Authorize(Roles = "Admin,Editor,SuperAdmin")]
+@using LegalSaaS.Application.Interfaces
+@using LegalSaaS.Domain.Entities
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@inject ITestimonialService TestimonialService
+
+<div class="page-header">
+    <div>
+        <span class="eyebrow">Prueba social</span>
+        <h1>Testimonios</h1>
+        <p>Activos de confianza para elevar conversion en el sitio publico.</p>
+    </div>
+</div>
+
+<div class="panel">
+    <EditForm Model="form" OnValidSubmit="Add">
+        <DataAnnotationsValidator />
+
+        <div class="admin-form-grid">
+            <label>
+                <span>Cliente</span>
+                <InputText @bind-Value="form.ClientName" />
+            </label>
+            <label>
+                <span>Fuente</span>
+                <InputText @bind-Value="form.Source" />
+            </label>
+            <label>
+                <span>Rating</span>
+                <InputNumber @bind-Value="form.Rating" />
+            </label>
+            <label class="wide">
+                <span>Resena</span>
+                <InputTextArea @bind-Value="form.ReviewText" />
+            </label>
+            <label class="check-row">
+                <InputCheckbox @bind-Value="form.IsApproved" />
+                <span>Visible en sitio publico</span>
+            </label>
+        </div>
+        <button class="btn-premium mt-3" type="submit">Agregar testimonio</button>
+    </EditForm>
+</div>
+
+<div class="panel table-shell">
+    <table class="data-table">
+        <thead>
+            <tr><th>Cliente</th><th>Resena</th><th>Rating</th><th>Estado</th><th></th></tr>
+        </thead>
+        <tbody>
+            @foreach (var item in items)
+            {
+                <tr>
+                    <td>@item.ClientName</td>
+                    <td>@ReviewText(item)</td>
+                    <td>@item.Rating</td>
+                    <td>
+                        <span class="status-pill @(item.IsApproved ? "approved" : "pending")">
+                            @(item.IsApproved ? "Aprobado" : "Pendiente")
+                        </span>
+                    </td>
+                    <td class="table-actions">
+                        @if (item.IsApproved)
+                        {
+                            <button class="btn btn-sm btn-secondary" @onclick="() => SetApproval(item.Id, false)">Ocultar</button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-sm btn-success" @onclick="() => SetApproval(item.Id, true)">Aprobar</button>
+                        }
+                        <button class="btn btn-sm btn-danger" @onclick="() => Delete(item.Id)">Eliminar</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private Testimonial form = new() { Rating = 5, IsApproved = true };
+    private List<Testimonial> items = new();
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load() => items = await TestimonialService.GetAllAsync();
+
+    private async Task Add()
+    {
+        await TestimonialService.AddAsync(form);
+        form = new Testimonial { Rating = 5, IsApproved = true };
+        await Load();
+    }
+
+    private async Task SetApproval(int id, bool isApproved)
+    {
+        await TestimonialService.SetApprovalAsync(id, isApproved);
+        await Load();
+    }
+
+    private async Task Delete(int id)
+    {
+        await TestimonialService.DeleteAsync(id);
+        await Load();
+    }
+
+    private static string ReviewText(Testimonial item) =>
+        !string.IsNullOrWhiteSpace(item.ReviewText)
+            ? item.ReviewText!
+            : item.Content ?? "Sin resena";
+}

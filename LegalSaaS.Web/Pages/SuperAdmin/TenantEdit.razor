@@ -1,0 +1,186 @@
+@page "/superadmin/tenants/edit/{Id:int}"
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@rendermode InteractiveServer
+@layout LegalSaaS.Web.Components.Layout.AdminLayout
+@attribute [Authorize(Roles = "SuperAdmin")]
+@using LegalSaaS.Application.Interfaces
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@inject ISuperAdminTenantService TenantService
+
+<div class="page-header">
+    <div>
+        <span class="eyebrow">Control manual</span>
+        <h1>@(form is null ? "Editar tenant" : $"Editar {form.Name}")</h1>
+        <p>Actualiza el estudio, su acceso anual y el administrador principal.</p>
+    </div>
+    <a class="btn-ghost" href="/superadmin/tenants">Volver</a>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(resultMessage))
+{
+    <div class="notice @(success ? "success" : "danger")">@resultMessage</div>
+}
+
+@if (isLoading)
+{
+    <div class="panel">Cargando tenant...</div>
+}
+else if (form is null)
+{
+    <div class="panel">
+        <p>No encontramos este tenant en la plataforma.</p>
+        <a class="btn-ghost mt-3" href="/superadmin/tenants">Volver a tenants</a>
+    </div>
+}
+else
+{
+    <div class="panel">
+        <EditForm Model="form" OnValidSubmit="SaveChangesAsync">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="admin-form-grid">
+                <label>
+                    <span>ID</span>
+                    <input value="@form.Id" readonly />
+                </label>
+                <label>
+                    <span>Creado</span>
+                    <input value="@FormatDateTime(form.CreatedAt)" readonly />
+                </label>
+                <label>
+                    <span>Nombre del estudio</span>
+                    <InputText @bind-Value="form.Name" />
+                </label>
+                <label>
+                    <span>Subdominio</span>
+                    <InputText @bind-Value="form.Subdomain" />
+                </label>
+                <label>
+                    <span>Fecha de vencimiento</span>
+                    <InputDate @bind-Value="form.TrialEndsAt" />
+                </label>
+                <label>
+                    <span>Nombre del admin</span>
+                    <InputText @bind-Value="form.AdminFullName" />
+                </label>
+                <label>
+                    <span>Email del admin</span>
+                    <InputText type="email" @bind-Value="form.AdminEmail" />
+                </label>
+                <label>
+                    <span>Nueva contrasena admin</span>
+                    <div class="password-control">
+                        <InputText type="@AdminPasswordInputType" autocomplete="new-password" @bind-Value="form.NewAdminPassword" />
+                        <button class="btn-ghost btn-sm" type="button" @onclick="ToggleAdminPasswordVisibility">
+                            @(showAdminPassword ? "Ocultar" : "Ver")
+                        </button>
+                    </div>
+                </label>
+                <label class="check-row">
+                    <InputCheckbox @bind-Value="form.IsActive" />
+                    <span>Tenant activo</span>
+                </label>
+            </div>
+
+            <div class="table-actions mt-3">
+                <button class="btn-premium" type="submit" disabled="@isSaving">
+                    @(isSaving ? "Guardando..." : "Guardar cambios")
+                </button>
+                <button class="btn-ghost" type="button" disabled="@isRenewing" @onclick="RenewAnnualSubscriptionAsync">
+                    @(isRenewing ? "Renovando..." : "Renovar Suscripcion Anual")
+                </button>
+                <a class="btn-ghost" href="/superadmin/tenants">Volver</a>
+            </div>
+        </EditForm>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private TenantEditRequest? form;
+    private bool isLoading = true;
+    private bool isSaving;
+    private bool isRenewing;
+    private bool showAdminPassword;
+    private bool success;
+    private string? resultMessage;
+
+    private string AdminPasswordInputType => showAdminPassword ? "text" : "password";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTenantAsync(showMissingMessage: true);
+        isLoading = false;
+    }
+
+    private async Task SaveChangesAsync()
+    {
+        if (form is null)
+            return;
+
+        isSaving = true;
+        try
+        {
+            var result = await TenantService.SaveTenantAsync(form);
+            success = result.Success;
+            resultMessage = result.Message;
+
+            if (result.Success)
+                await LoadTenantAsync(showMissingMessage: false);
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task RenewAnnualSubscriptionAsync()
+    {
+        if (form is null)
+            return;
+
+        isRenewing = true;
+        try
+        {
+            var result = await TenantService.RenewAnnualSubscriptionAsync(Id);
+            success = result.Success;
+            resultMessage = result.Message;
+
+            if (result.Success)
+                await LoadTenantAsync(showMissingMessage: false);
+        }
+        finally
+        {
+            isRenewing = false;
+        }
+    }
+
+    private async Task LoadTenantAsync(bool showMissingMessage)
+    {
+        form = await TenantService.GetTenantEditAsync(Id);
+        showAdminPassword = false;
+
+        if (form is not null)
+        {
+            form.NewAdminPassword = null;
+            return;
+        }
+
+        if (showMissingMessage)
+        {
+            success = false;
+            resultMessage = "Tenant no encontrado.";
+        }
+    }
+
+    private void ToggleAdminPasswordVisibility()
+    {
+        showAdminPassword = !showAdminPassword;
+    }
+
+    private static string FormatDateTime(DateTime value) =>
+        value.ToString("yyyy-MM-dd HH:mm");
+}
